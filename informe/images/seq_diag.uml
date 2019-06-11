@@ -1,0 +1,50 @@
+// Listado de transacciones
+
+actor Usuario
+participant Aplicación
+participant Servidor de archivos
+database Blockchain
+
+Usuario->Aplicación: Solicitud de listado
+
+Aplicación->Blockchain: Solicitud de todas las transacciones realizadas
+
+Blockchain-->Aplicación: Respuesta
+
+loop Por cada transacción
+  Aplicación->Servidor de archivos: Solicitud del archivo asociado
+
+  Servidor de archivos-->Aplicación: Recuperación del archivo
+
+  Aplicación->Aplicación: Cálculo de la huella digital del archivo
+  note over Aplicación: HD es Huella Digital
+
+  alt HD calculada = HD transacción
+    Aplicación->Usuario: Informa archivo inalterado
+  else
+    Aplicación->Usuario: Informa archivo modificado
+  end
+end
+
+// Alta de un certificación
+
+actor Usuario
+participant Aplicación
+participant Servidor de archivos
+database Blockchain
+
+Usuario->Aplicación: Solicitud de certificación de un archivo
+
+Aplicación->Servidor de archivos: Envío/subida del archivo
+Servidor de archivos-->Aplicación: Respuesta con la URL y la huella calculada
+
+Aplicación->Aplicación: Cálculo de la huella digital del archivo
+note over Aplicación: HD es Huella Digital
+
+alt HD del cliente = HD del servidor
+  Aplicación->Blockchain: Envío de los datos requeridos (mínimo HD y URL)
+  Blockchain-->Aplicación: Respuesta de la operación
+  Aplicación->Usuario: Informa finalización
+else
+  Aplicación->Usuario: Informa inconsistencia y cancela
+end

@@ -1,0 +1,25 @@
+version: "3.2"
+services:
+  fileserver:
+    build: ./file-fingerprint-server
+    environment:
+      PORT: "8888"
+    ports:
+      - "9999:8888"
+    volumes:
+      - type: bind
+        source: ./uploads
+        target: /app/public/uploads
+    networks:
+      - default
+  dappserver:
+    build:
+      context: ./file-fingerprint-dapp
+      args:
+        reactappfileserverendpoint: "http://localhost:9999"
+    environment:
+      PORT: "8080"
+    ports:
+      - "33333:8080"
+    networks:
+      - default

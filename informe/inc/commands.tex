@@ -1,0 +1,44 @@
+% Comandos personalizados
+
+% {\fechaPresentacion} :: para escribir la fecha de presentación del trabajo
+\newcommand{\fechaPresentacion}{\today}
+% {\unlp} :: para escribir "Universidad Nacional de La Plata"
+\newcommand{\unlp}{Universidad Nacional de La Plata}
+% {\facultad} :: para escribir "Facultad de Informática"
+\newcommand{\facultad}{Facultad de Informática}
+% {\tituloTrabajo} :: Para escribir el título de la tesina
+\newcommand{\tituloTrabajo}{Integridad de archivos y su distribución en una red blockchain}
+% \tituloTrabajoDosLineas :: Para escribir el título de la tesina en dos líneas (carátula)
+\newcommand{\tituloTrabajoDosLineas}{Integridad de archivos\\* y su distribución en una red blockchain}
+% {\sebaponti} :: para escribir "Sebastian Ponti"
+\newcommand{\sebaponti}{Sebastian Ponti}
+% {\pontiseba} :: para escribir "Ponti, Sebastian"
+\newcommand{\pontiseba}{Ponti, Sebastian}
+% {\lndl} :: para escribir "Lautaro Nahuel De León"
+\newcommand{\lndl}{Lautaro Nahuel De León}
+% {\dlln} :: para escribir "De León, Lautaro Nahuel"
+\newcommand{\dlln}{De León, Lautaro Nahuel}
+
+% {\caratula} :: para generar la carátula de la tesina
+\newcommand{\caratula}{
+  \begin{center}
+    \includegraphics{images/unlp.png}\\
+    \huge{\unlp}\\
+    \vspace{5mm}
+    \huge{\facultad}\\
+    \vspace{5mm}
+    \large{Tesina de la Licenciatura}\\
+    \vspace{15mm}
+    \huge{\tituloTrabajoDosLineas}\\
+    \vspace{10mm}
+    \large{\textbf{\pontiseba} \\
+    \textbf{\dlln}}\\
+    \vspace{20mm}
+    \large{Directora: Dra. Patricia Bazán}\\
+    \vspace{20mm}
+    \normalsize{\fechaPresentacion}\\
+  \end{center}
+}
+
+% {\checkmark} :: para imprimir un check (tilde)
+\def\checkmark{\tikz\fill[scale=0.4](0,.35) -- (.25,0) -- (1,.7) -- (.25,.15) -- cycle;}

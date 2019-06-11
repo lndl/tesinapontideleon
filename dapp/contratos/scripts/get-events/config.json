@@ -1,0 +1,8 @@
+{
+  "host": "wss://kovan.infura.io/ws",
+  "contract": {
+    "address": "0x6AF234995a6BBDe59919387Ed2050a5E164CefA4",
+    "eventName": "FileAdded",
+    "fromBlock": 8798023
+  }
+}

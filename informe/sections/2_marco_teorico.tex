@@ -1,0 +1,820 @@
+\section{Marco teórico: blockchain}
+\label{mt_blockchain}
+
+En este capítulo se desarrollará todo el fundamento teórico relacionado a blockchain con el propósito de comprender las características y las propiedades de la solución propuesta para resolver el caso o problema descrito.
+
+En primer lugar se hará una descripción contextualizada de los sucesos históricos más relevantes que propiciaron el desarrollo del concepto de blockchain tal como se conoce hoy en día. Cada uno de estos hitos brindará un aporte fundamental a la hora de entender más adelante los pilares de la blockchain. Posteriormente se presentará a Bitcoin, la primera implementación de blockchain exitosa, mostrando sus partes constitutivas y su funcionamiento como tal. Finalmente se desarrollará Ethereum, la blockchain que se usará para el desarrollo de la solución al problema tratado en este trabajo, desde un punto de vista comparativo a Bitcoin y con el agregado de los contratos inteligentes, pieza clave para la resolución descentralizada y trazable de problemas -en particular, nuevamente, el detallado en esta tesina-.
+
+\subsection{Orígenes}
+
+Antes de comenzar con los conceptos teóricos en torno a de blockchain, se hará un repaso de los sucesos históricos que ayudaron o influyeron en la constitución de esta idea como tal. La necesidad de hacer esto se fundamenta en dos razones: en primer lugar, seguir con la línea histórica introducida en el capítulo anterior dentro del marco de los fundamentos que se analizarán en este apartado. Y en segundo lugar, porque se verá que la culminación de la noción de blockchain reviste otras ideas relacionadas que se fueron gestando con anterioridad. Consecuentemente, se tratará de explicar las más importantes en orden histórico antes de llegar a la representación final de blockchain.
+
+\subsubsection{Primer prototipo de cadena de bloques (blockchain)}
+\label{bc_origins_blockchain}
+
+En el año 1991, los científicos Stuart Haber y W. Scott Stornetta publicaron un artículo denominado \textit{How to Time-Stamp a Digital Document \cite{Haber:1991:TDD:2724969.2725089}} (``¿Cómo asignarle una fecha/hora a un documento digital?'' sería la traducción aproximada) en donde se analiza un problema similar al presentado en esta tesina. Se podría decir, básicamente, que la idea en común es poder verificar la inmutabilidad de un recurso digital desde un determinado momento. Dentro del contexto del trabajo recientemente citado, en donde el objetivo concreto es encontrar un mecanismo para sellar documentos digitales en el tiempo de manera tal que sea prácticamente incorruptible, se desarrollan dos tipos de soluciones, una centralizada y otra distribuida. Más allá de los detalles de implementación de ambas solución -en donde, como dato anecdótico, es interesante notar que la opción distribuida se titula como ``confianza distribuida'' en dicho artículo-, lo que sea desea recalcar y puntualizar de dicho trabajo es la idea de enlazar las certificaciones, es decir, el acto de informar que un archivo tiene determinado contenido (a través de la huella digital) a partir de una fecha y hora concreta, unas con otras de manera tal de incluir fragmentos de certificaciones previas en la certificación actual. Formalmente, esto sería:
+
+\begin{equation}
+  C_n = (n, t_n, ID_n, y_n, L_n)
+\end{equation}
+
+donde $C_n$, la certificación en sí, es una tupla compuesta por su número de secuencia $n$, el \textit{timestamp} $t_n$, el identificador del cliente $ID_n$, o sea, quien hace la petición de certificación, la huella digital $y_n$ del documento a certificar y $L_n$ es una porción de datos de la certificación previa:
+
+\begin{equation}
+  L_n = (t_{n-1}, ID_{n-1}, y_{n-1}, H(L_{n-1}))
+\end{equation}
+
+donde tanto el \textit{timestamp} como el identificador del cliente y la huella digital provienen de la certificación inmediatamente predecesora y, junto a esto, se incluye una huella digital ($H$ es una función de hash) de una porción de datos previa, es decir, de datos de la certificación $C_{n-2}$
+
+A continuación se muestra un gráfico ilustrativo sobre la cadena de certificación que se formaría, extraída de \cite{Narayanan:2016:BCT:2994437}
+
+\begin{figure}[H]
+  \includegraphics[height=6cm, width=14cm]{timestamps_chain.png}
+  \centering
+  \caption{Cadena de \textit{timestamps}  }
+  \label{fig:timestamps-chain}
+\end{figure}
+
+La consecuencia más importante de lo expuesto en el trabajo presentado por Haber y Stornetta es que si, por ejemplo, por alguna razón se altera la huella digital de la certificación $C_i$, $y_i$, entonces el resto de las $k$ certificaciones subsiguientes quedarán corruptas ya que si:
+
+\begin{equation}
+  C_i = (i, t_i, ID_i, y_i; L_i)
+\end{equation}
+
+Y al analizar la $k$ certificacion siguiente a $C_i$, es decir, $C_{i+k}$:
+
+\begin{align}
+  C_{i+k}     &= (i+k, t_{i+k}, ID_{i+k}, y_{i+k}, L_{i+k})\\
+  L_{i+k}     &= (t_{i+k-1}, ID_{i+k-1}, y_{i+k-1}, H(L_{i+k-1}))\\
+  L_{i+k-1}   &= (t_{i+k-2}, ID_{i+k-2}, y_{i+k-2}, H(L_{i+k-2}))\\
+  \dots\\
+  L_{i+k-k+1} &= L_{i+1} = (t_i, ID_i, y_i, H(L_i))
+\end{align}
+
+Se puede ver como toda la secuencia $i+k$ hasta llegar a $i+1$ se referencian hacia atrás a través de una huella computada por la función $H$. En el caso particular de $L_{i+1}$, la huella $H$ de la tupla correspondiente, es decir, $(t_i, ID_i, y_i, H(L_{i+1}))$ será totalmente distinta si el valor de $y_i$ fue alterado y, desde ese punto hacia delante, el resto de las certificaciones quedarán inválidas porque la referencia hacia atrás de la huella cambiará completamente. Es decir, si la alteración se expresa como $y_i'$, entonces:
+
+\begin{align}
+  L_{i+k-k+1}' &= L_{i+1}' = (t_i, ID_i, y_i', H(L_i))\\
+  L_{i+k-k+2}' &= L_{i+2}' = (t_{i+1}, ID_{i+1}, y_{i+1}, H(L_{i+1}'))\\
+  \dots\\
+  L_{i+k}'     &= (t_{i+k-1}, ID_{i+k-1}, y_{i+k-1}, H(L_{i+k-1}'))
+\end{align}
+
+Las ecuaciones previas muestran cómo la cadena de referencias entre certificaciones conectadas diverge cuando uno de los ``eslabones'' cambia su contenido. Siguiendo estos procedimientos, es fácilmente verificable cuándo y dónde una certificación fue alterada y, por esta razón, este enlazamiento es resistente a los cambios que se produzcan, se deban a razones fortuitas o malintencionadas.
+
+Desde el punto de vista histórico, este representa el primer trabajo en donde se utiliza una \textit{cadena de bloques (blockchain)} como estructura de datos principal para el almacenamiento con detección y/o protección de cambios. Entender estos conceptos servirá luego para comprender mejor cómo las implementaciones contemporáneas de las diversas blockchains funcionan hoy en día dado que es, probablemente, el núcleo lógico de este tipo de arquitecturas o redes.
+
+\subsubsection{Mejora del prototipo: inclusión de árbol de Merkle}
+\label{bc_origins_merkle}
+
+Dos años después de la publicación \textit{How to Time-Stamp a Digital Document \cite{Haber:1991:TDD:2724969.2725089}}, es decir, en 1993, los mismos autores del artículo original junto a Dave Bayer publican uno nuevo denominado \textit{Improving the Efficiency and Reliability of Digital Time-Stamping \cite{BayerHaberStornetta1993}} (traducido aproximadamente a ``Mejorando la eficiencia y la confianza de un servicio digital de sellado de tiempo''). La idea de esta revisión es agregar una alternativa más con el propósito de mejorar la eficiencia a la hora de almacenar y verificar las certificaciones, a cambio de relajar un poco la precisión de estos sellados: en lugar de enlazar y sellar cada certificación, el nuevo mecanismo presentado propone mantener una cadena maestra donde cada uno de los eslabones mantiene la integridad de un grupo o bloque de certificaciones que se emitieron en un determinado lapso de tiempo. Se verá a continuación un gráfico extraído de \cite{Narayanan:2016:BCT:2994437} ilustrando la idea explicada recientemente:
+
+\begin{figure}[H]
+  \includegraphics[height=6cm, width=14cm]{tree_timestamps_chain.png}
+  \centering
+  \caption{Cadena de \textit{timestamps} arbolada }
+  \label{fig:tree-timestamps-chain}
+\end{figure}
+
+Los bloques sombreados son parte de la cadena maestra y cada eslabón agrupa una determinada cantidad de certificaciones en un periodo de tiempo esquematizado a través de la línea punteada. Lo importante de destacar es que, desde la perspectiva de quien o quienes mantienen la cadena maestra, cada agrupamiento, representado por cada uno de los eslabones, no almacena la partición completa de los certificados asignados sino que mantiene tan sólo la huella de la raíz del \textit{árbol de Merkle} de todos ellos. Dicha estructura, caracterizada y explicada por Ralph Merkle (de ahí el nombre) en \cite{Merkle1980} para un artículo de sistemas criptográficos, es un árbol binario donde los nodos hoja representan el dato de interés más su huella digital y cada nodo interno es, recursivamente, la huella digital de la huellas ``Merkle'' concatenadas de cada uno de los subárboles. Formalmente sería algo como:
+
+\begin{equation}
+  MT_{val}(t) = \begin{cases*}
+   h(data(t))  & si t es hoja\\
+   h(MT_{val}(sa_{izq}(t)) + MT_{val}(sa_{der}(t)))  & si t es interno
+        \end{cases*}
+\end{equation}
+
+donde $t$ es un nodo, $h$ es una función de \textit{hash}, $data$ es una función que obtiene el dato de interés a partir de un nodo, $sa_{izq}$ y $sa_{der}$ son funciones que denotan el subárbol izquierdo y derecho, respectivamente, a partir de un nodo y $+$ es una operación de concatenación similar a la homónima para \textit{strings}.
+
+A fin de comprender mejor el concepto, a continuación se revelará un ejemplo gráfico:
+
+\begin{figure}[H]
+  \includegraphics[height=10cm, width=14cm]{merkle_tree_example.png}
+  \centering
+  \caption{Ejemplo de árbol de Merkle }
+  \label{fig:merkle-tree-example}
+\end{figure}
+
+Se muestra claramente en la figura anterior como el nodo raíz mantiene la huella de sus nodos hijos, y así, recursivamente, hasta llegar a los nodos hoja que contienen o apuntan directamente a los datos concretos.
+
+Retomando el contexto previo, el de la cadena maestra del artículo \cite{BayerHaberStornetta1993}, donde se ha establecido que cada eslabón es una raíz \textit{Merkle} de un conjunto de certificaciones en un lapso de tiempo, se presentan, al menos, dos ventajas destacables:
+
+\begin{enumerate}
+  \item La cadena maestra, tal como se insinuó anteriormente, no requiere de todas las certificaciones. Hay que puntualizar que un eslabón ya no es más la representación de una simple certificación, sino que más bien sería el resumen -por medio de una huella digital- de un bloque de certificaciones, donde cada una de ellas posiblemente esté ubicada en otros lugares físicos.
+
+    Tal como se explica en el artículo de Bayer, Haber y Stornetta, la idea es distribuir el gobierno de los distintos subárboles que componen un eslabón en diferentes partes de la red y promover las huellas hacia arriba, es decir, hacia la cadena maestra como si fuera un torneo eliminatorio de un juego 1 vs 1. El objetivo de esto es reducir el espacio insumido en mantener certificaciones en los puntos de validación sólo para tal fin.
+  \item Relacionado al punto anterior, con esta nueva disposición no se necesitan revisar N certificados para legitimar la integridad de uno particular, sino que ahora se requieren $\log_2 N$ verificaciones mejorando enormemente los tiempos para realizar dicha tarea. Por ejemplo, en base a la figura \ref{fig:merkle-tree-example} -que cuenta con cuatro datos concretos-, si se deseara verificar la integridad de \textit{L4}, se debería obtener la huella de este dato -\textit{Hash 1-1}-  y, adicionalmente, tener disponibles las huellas de \textit{Hash 1-0} y de \textit{Hash 0}: con la primera y la segunda se obtendría \textit{Hash 1} y con esta última más la tercera, es decir, \textit{Hash 0}, se obtendría la raíz Merkle a comparar contra la registrada en la cadena maestra, dando un total de 3 verificaciones, es decir, $O(\log_2 N)$ (con 8 certificaciones se necesitarían 4 verificaciones, con 16, 5, y así sucesivamente).
+\end{enumerate}
+
+En definitiva, esta ampliación \cite{BayerHaberStornetta1993} del trabajo original \cite{Haber:1991:TDD:2724969.2725089} presenta mejoras, respecto a la cadena de bloques esbozada originalmente, desde el punto de vista de la eficiencia en espacio y tiempo, y se aproxima aun más a las implementaciones recientes de lo que se conoce como blockchain. Tal como se verá más adelante, estas nociones estarán muy presentes al momento de estudiar las bases de dichas estructuras.
+
+\subsubsection{Hashcash: primer servicio en usar Prueba-de-Trabajo}
+\label{bc_origins_hashcash}
+
+En esta subsección se explicará uno de los últimos pilares necesarios para entender de manera integral el funcionamiento de blockchain tal como se conoce en estos tiempos. Para ello, y continuando con la línea histórica, se expondrá una solución a un problema que a simple vista no está para nada emparentado con la clase de problemas que trata blockchain, pero que sin embargo, tuvo un enorme impacto e influencia en una parte fundamental del objeto de estudio de este capítulo.
+
+Ya en la década de 1990, en pleno auge de Internet, uno de los principales problemas surgido en aquel entonces era el del correo basura o \textit{spam}, denominado así al correo enviado masiva e indiscriminadamente con propósitos publicitarios o malintencionados. Desde entonces se han diseñado una vasta cantidad de estrategias y filtros anti-spam de diversa índole para evitar esta clase de correos.
+
+Uno de esos mecanismos surgió a partir de una idea de un criptógrafo inglés conocido como Adam Back, pensado e implementado en mayo de 1997 y publicado formalmente en agosto de 2002, al cual bautizó como Hashcash \cite{Back2002}. El principal argumento detrás de este método antispam es el siguiente: alguien interesado en enviar un correo no tendrá mayores problemas en demorar unos segundos la salida del mismo, pero en cambio, sumar esta demora en cada uno de los masivos correos salientes por parte de un cliente de \textit{spam}, hará que su negocio sea inviable, y forzosamente, tendrá que desistir de ello. Ahora bien, esa demora no puede ser cualquier demora, pues de lo contrario, sería fácilmente evitable por el emisor. Tendría que poseer la propiedad de ser verificable trivialmente por un tercero -que tranquilamente podría ser el receptor- de manera tal de poder demostrar fehacientemente que el emisor dedicó un esfuerzo o un trabajo para enviar dicho correo al remitente deseado, y de esta manera, cerciorarse que existió un interés real en realizar dicha acción. En síntesis, se requiere de un método en donde sea fácil y rápido de demostrar por un receptor que el emisor invirtió un tiempo moderado en el envío del correo.
+
+La propuesta técnica presentada en el trabajo de Adam Back para cumplir con los requisitos presentados en el párrafo anterior consiste en describir una familia de funciones \textit{costo} de la siguiente forma:
+
+\begin{equation} \label{eq:funciones-costo}
+  \begin{cases*}
+    T \leftarrow Mint(s, w)\\
+    V \leftarrow Value(T)
+  \end{cases*}
+\end{equation}
+
+$Mint$ es el procedimiento que realiza la inversión de trabajo a través de un desafio computacional con una serie de metadatos $s$ y una dificultad de trabajo $w$ que debería ajustarse de alguna forma para que siempre sea moderada de acuerdo al poder de cómputo físico disponible. El resultado de esto se traduce a un \textit{token} $T$. Por otra parte, $Value$ es la función que verifica velozmente que el \textit{token} $T$ es válido, demostrando de esta manera que hubo trabajo real al momento de computar este \textit{token}.
+
+Las propiedades que deben cumplirse para esta familia de funciones son:
+
+\begin{itemize}
+  \item Como se ha dejado expresado, $Mint$ debe ser una función de costo de cómputo moderado mientras que $Value$ deberá computarse trivialmente.
+  \item Ser públicamente auditables, es decir, que se conozca perfectamente su funcionamiento.
+  \item Tener costo fijo o probabilístico, es decir, que el costo dedicado a la inversión de esfuerzo sea fijo, o bien, probabilísticamente predecible y/o regular en la práctica.
+  \item No disponer de ningún mecanismo para realizar inversiones de trabajo de manera fácil. Esto se exige para no ofrecer ninguna clase de ventaja a ciertos usuarios.
+\end{itemize}
+
+Cabe destacar que la función que usa Hashcash cumple con todas las precondiciones presentadas. Antes de presentar su descripción formal, conviene explicar brevemente y de manera simplificada su funcionamiento dentro del contexto en la cual fue desarrollada, es decir, en los correos electrónicos \cite{Adam2006}.
+
+El emisor deberá realizar el siguiente procedimiento:
+
+\begin{enumerate}
+\item Se construye una cadena $s$ de la forma:
+\begin{equation}
+fecha:remitente:contador
+\end{equation}
+Por ejemplo:
+\begin{equation}
+  20190118190000:xyz@abc.com:00000000
+\end{equation}
+\item Se computa una huella digital $h$ de la cadena $s$ por medio de una función de hash $H$.
+  \begin{enumerate}
+    \item Si los primeros $k$ digitos de $h$ son 0 ($k$ es un párametro que depende directamente de la dificultad del desafío), entonces se ha encontrado el \textit{token} $T$ del esfuerzo invertido. La cadena $s$ se adjunta en una cabecera especial del correo (\textit{X-Hashcash}) al momento de enviarse.
+    \item Si no, se incrementa en una unidad la parte del contador de la cadena $s$ y se vuelve a repetir el procedimiento a partir del segundo paso.
+  \end{enumerate}
+\end{enumerate}
+
+Luego, el receptor deberá proceder así:
+
+\begin{enumerate}
+  \item Se extrae de la cabecera del correo electrónico la cadena $s$ adjuntada (\textit{X-Hashcash})
+  \item Se computa una huella digital $h$ de la cadena $s$ por medio de una función de hash $H$.
+  \begin{enumerate}
+    \item Si $h$ cumple con el desafío, es decir, la cantidad inicial de $k$ digitos 0 preestablecida, entonces, el correo pasa el filtro.
+    \item De lo contrario, el correo se descarta por no validar el desafío impuesto.
+  \end{enumerate}
+\end{enumerate}
+
+Y formalmente, la función presenta esta forma, comparable a la ecuación \ref{eq:funciones-costo}:
+
+\begin{equation}
+  \begin{cases*}
+    T \leftarrow Mint(s, w), \mathbf{hallar}\; x \in \{0, 1\}^*\; \mathbf{tq}\; H(s+t) \propto_w 0^k \\
+    V \leftarrow Value(T),  \mathbf{verificar}\; H(s+t) \propto_w 0^k
+  \end{cases*}
+\end{equation}
+
+donde la semántica de todas las variables coincide con lo explicado en los procedimientos precedentes, a excepción del operador $\propto_w$ cuyo significado sería: ``los $k$ primeros dígitos de la cadena de la izquierda tienen que coincidir completamente con la cadena de la derecha''.
+
+En resumen, la implementación y el artículo posterior de Adam Back presenta una técnica para verificar rápidamente el trabajo exigido -con un esfuerzo considerable- a través de un desafío computacional, de un participante de una red, con el objeto de garantizar que éste tiene genuino interés en realizar determinada tarea (enviar un correo electrónico, en el caso particular del trabajo de Adam Back).
+
+Este sistema fue el primer caso popular y documentado -con un precursor similar tratado en \cite{Dwork1992}- de un algoritmo de Prueba-de-Trabajo -formalizado y nombrado en \cite{Jakobsson1999}-. Luego se estudiará en detalle y se verá que es vital en el funcionamiento de blockchain.
+
+\subsubsection{B-money y Bit gold: primeros precursores monetarios de Bitcoin}
+\label{bc_origins_bmbg}
+
+Aproximadamente una década antes de la publicación del \textit{paper} de Bitcoin -y de su blockchain-, se describieron bocetos y propuestas informales que pretendían como objetivo lograr la descentralización -cuanto menos- de los sistemas monetarios.
+
+En 1998, un estudiante de computación y aficionado a la criptoanarquía conocido como Wei Dai, publica en las listas de correo de aquel entonces un ensayo titulado \textit{bmoney}\cite{Narayanan:2016:BCT:2994437}\cite{WeiDai1998} en donde propone y detalla resumidamente cómo debería implementarse una moneda prescindiendo de una entidad central que controle la creación y el curso de las mismas. En su lugar, se plantea el uso de un método de Prueba-de-Trabajo, similar al repasado previamente en Hashcash, para la creación de monedas: se presenta un desafío computacional y quien lo resuelva -tras un arduo esfuerzo- recibe una recompensa por ello. Para la transferencia de activos, Dai plantea que cada participante de la red -identificado por una clave pública-, o bien, un subconjunto de ellos, mantenga la información de toda la red, en particular, del balance corriente de todas las cuentas de los usuarios, y que todos sean capaces de enviar y recibir mensajes -firmados con una clave privada-  a o hacia todos para mantener actualizado el estado global de toda la red en conjunto, correspondiéndose este comportamiento al de un sistema totalmente distribuido. Asimismo, se manifiesta también dentro del protocolo esbozado, la idea de ``contratos'', es decir, de acuerdos entre dos partes de la red arbitrado por una tercera, con un pseudo esquema de penalizaciones y consenso en los casos de incumplimiento o desacuerdo.
+
+En el mismo año -1998- un científico de la computación llamado Nick Szabo propone una idea similar a la cual bautiza como \textit{Bit Gold}\cite{Narayanan:2016:BCT:2994437}\cite{Szabo1998}. En él, la propuesta básica es también usar un método de Prueba-de-Trabajo a partir de un desafío para la generación de monedas, y la solución de este problema sumado al uso de sellado distribuido de tiempo y el enlazado de todas ellas en una cadena global y distribuida conformarían el protocolo.
+
+Ambas propuestas son bastantes laxas y carecen de la formalidad y la robustez de un trabajo de investigación o \textit{paper}. Sin embargo, han sentado precedentes históricos en cuanto al desarrollo y a la consolidación del concepto contemporáneo de blockchain. Entre ellas:
+
+\begin{itemize}
+  \item La idea aproximada de distribuir el estado global de la red entre los distintos participantes de la misma, o sobre un subconjunto de ellos.
+  \item El uso de Prueba-de-Trabajo. Si bien se verá que en las blockchains más modernas no se utiliza para el ``acuñamiento'' de criptomonedas, termina siendo parte sustancial de la solución en otros aspectos.
+  \item El uso de criptografía asimétrica -clave pública y privada- para identificar la propiedad de las transacciones.
+  \item El concepto de ``contratos'': \textit{B-Money} brinda una explicación informal sobre esto y Nick Szabo desarrolla una propuesta formal en \cite{Szabo1997} sobre la idea que, años más tarde, se convertiría en el eje central de la blockchain de Ethereum \cite{Buterin2014}, a explicarse durante el desarrollo de este capítulo.
+\end{itemize}
+
+
+\subsection{Bitcoin: primera implementación de blockchain}
+
+En esta subsección se describirá Bitcoin, y más específicamente, la blockchain que le da sentido y sustento tecnológico a dicha criptomoneda. A lo largo de este apartado se verá cómo los temas desarrollados previamente tendrán su impacto en la formulación de la idea de blockchain. Dicho en otros términos, se apuntará a describir el \textit{paper} seminal de Bitcoin como una composición y conjugación de los temas recientemente vistos y no como un trabajo totalmente aislado de su contexto histórico.
+
+\subsubsection{Historia}
+
+En 2008, Satoshi Nakamoto -un pseudónimo para una persona o grupo de personas desconocidas- publica en las listas de correo un \textit{paper} titulado \textit{Bitcoin: A Peer-to-Peer Electronic Cash System} (traducido aproximadamente a ``Bitcoin: un sistema de efectivo electrónico usuario-a-usuario''), el cual describe un sistema de pago electrónico distribuido, independiente de terceras entidades requeridas para el control y el curso válido de la moneda. A diferencia de las propuestas previas presentadas aproximadamente una década atrás por Wei Dai y Nick Szabo, este artículo describe con suficiente rigurosidad y completitud todos los aspectos necesarios para que el sistema monetario presentado funcione de forma confiable.
+
+En 2009 se puso en marcha la red Bitcoin por medio de una implementación inicial provista por el mismo Satoshi Nakamoto y, desde entonces, ha crecido significativamente de la mano de muchos programadores alrededor del mundo. Satoshi, por su parte, dejó el desarrollo en el año 2011 y su presencia y participación en las redes se ha desvanecido por completo.
+
+Más allá de que su futuro en la economía y en las finanzas es revolucionario y, al mismo tiempo, incierto, también fue igualmente revolucionaria la infraestructura detrás del Bitcoin, es decir, la blockchain, que a partir de este puntapié inicial abriría el terreno para presentar esta tecnología a muchos otros dominios, amén de las criptomonedas.
+
+\subsubsection{Componentes de la blockchain}
+\label{bc_bitcoin_components}
+
+En esta sección se describirán las partes constitutivas de la blockchain de Bitcoin que, fundamentalmente, son dos: por un lado los bloques -conectados entre sí formando la típica cadena de bloques- y por otro lado las transacciones, las cuales en conjunto conforman a los bloques.
+
+\paragraph{Transacción}
+\label{bc_bitcoin_transaction}
+
+Las transacciones son las unidades constitutivas de la blockchain de Bitcoin. Denotan de cierta manera la propiedad de un recurso que, para el caso particular de Bitcoin, se trata de un valor monetario intangible.
+
+A continuación se mostrará el primer gráfico de una cadena de transacciones, extraído del \textit{paper} de Nakamoto:
+
+\begin{figure}[H]
+  \includegraphics[height=8.5cm, width=14cm]{bitcoin_transaction_paper.png}
+  \centering
+  \caption{Cadena de transacciones, de Satoshi Nakamoto}
+  \label{fig:bitcoin-transaction-paper}
+\end{figure}
+
+Es importante destacar, antes de puntualizar algunos aspectos del gráfico, que esta representación no ejemplifica fielmente la implementación real de una transacción en Bitcoin, pero es útil como primera aproximación y se verá posteriormente un modelo muchísimo más cercano al real.
+
+Ahora sí, volviendo a la figura \ref{fig:bitcoin-transaction-paper} se puede tomar nota de lo siguiente:
+
+\begin{itemize}
+  \item Las transacciones están enlazadas en serie, formando una cadena de propiedad.
+  \item El recurso $r$ asociado a la transacción en la posición $i$ de la cadena corresponde a un propietario $x$.
+  \item El recurso $r$, ya sea de forma total o parcial, provenía de la transacción $i - 1$ donde el propietario era $y$.
+  \item A través de criptografía asimétrica se usa una clave privada para firmar y autorizar una acción, y con la clave pública asociada se puede verificar que dicha firma es auténtica, es decir, que corresponde a quien efectivamente la ejecutó.
+  \item En el contexto de las transacciones, se usa la clave privada para firmar una nueva transacción representando el pase de un recurso a otro propietario. A través de la clave pública asociada, cualquiera puede constatar que dicha transacción, y por ende dicho pase, fue autorizado por el propietario anterior. Por ejemplo, la transacción $i$ fue firmada por el propietario $y$ autorizando la transferencia de su recurso al propietario $x$ y referenciando la anterior propiedad de su propio recurso proveniente de la transacción $i - 1$.
+\end{itemize}
+
+Cabe recalcar en este punto que todas las transacciones son públicas, o dicho en otras palabras, se difunden por toda la red. Y otra cuestión importante que vale la pena aclarar es que las transacciones son los únicos elementos que describen la propiedad de los recursos dentro de la red. Esto significa que no existen ni cuentas, ni balances, ni usuarios; únicamente existen transacciones que podrán estar o no ``gastadas'' -concepto que se aclarará luego-.
+
+A continuación se hará una descripción más verosímil de la estructura de una transacción en Bitcoin. En primer lugar, el siguiente gráfico ayudará a visualizar un poco mejor cómo es realmente la cadena de transacciones comparada a la anterior de la figura \ref{fig:bitcoin-transaction-paper}:
+
+\begin{figure}[H]
+  \includegraphics[height=8cm, width=12cm]{bitcoin_transaction_bitcoincore.png}
+  \centering
+  \caption{Cadena de transacciones, muy similar a Bitcoin (gráfico extraído de \cite{Narayanan:2016:BCT:2994437})}
+  \label{fig:bitcoin-transaction-bitcoincore}
+\end{figure}
+
+El cambio más significativo respecto a lo explicado anteriormente es que las transacciones, en realidad, poseen entradas y salidas -\textit{inputs} y \textit{outputs}, respectivamente-. Una entrada es una referencia a una salida de una transacción previa, mientras que una salida es un valor o recurso a transferir junto a algo similar a la dirección del beneficiario (no es exacta esta descripción, pero se detallará más adelante). Es decir que dentro de una transacción se especifican una o muchas entradas que, a su vez, hacen referencia a salidas de transacciones previas. Las entradas, de alguna manera, sirven para declarar dentro de una determinada transacción de dónde provienen los fondos o recursos. Y cada una de las salidas describe una cantidad de ese fondo común a destinarse a un beneficiario.
+
+En la figura \ref{fig:bitcoin-transaction-bitcoincore} se puede ver, como ejemplo, una cadena de transacciones identificadas de la 1 a la 4 donde el recurso es una moneda -podrían ser \textit{satoshis}\footnote{Un \textit{satoshi} es la mínima fracción de moneda en Bitcoin. 100000000 satoshis conforman 1 bitcoin}, pero no es relevante en este punto-. La primera es especial dado que crea monedas y, por lo tanto, no tiene entradas puesto que no hay ingreso de recursos mediante una transferencia (este tipo de transacciones se analizará mejor en el apartado \ref{bc_bitcoin_pow}); en cambio, sí hay registrada una salida de 25 monedas (las creadas) a Alice, como se ha dicho previamente, a través de algo similar a una clave pública. Luego, en la transacción 2 se tiene una entrada denotada como 1{[}0{]}: esto se lee como: ``de la transacción 1, se adquieren recursos de la salida 0''; en este caso particular, la entrada 0 de la transacción 2, reclamará la salida de las 25 monedas transferidas a Alice provenientes de la transacción previa, es decir, la 1. A su vez, la transacción 2 dispone de dos salidas: 17 monedas serán transferidas a Bob y 8 a Alice. Finalmente esta transacción es firmada con la clave privada de Alice, avalando y autorizando su legitimidad y ejecución. Siendo que es Alice la autora de esta acción, una pregunta válida podría ser por qué se generó una salida de 8 monedas hacia ella misma. La razón es que la totalidad de las entradas deben ser consumidas completamente en la transacción, ya que de lo contrario se pierden; y por otra parte las mismas, como así también las salidas referenciadas, son elementos indivisibles. Por lo tanto, si se desea transferir un importe menor a dicha suma, lo que se hace es generar una salida hacia el emisor con el resto de las entradas consumidas; a esta salida se la denomina coloquialmente como ``cambio'', ya que básicamente es eso mismo.
+
+Este modelo centrado en transacciones presenta como principal ventaja la capacidad de poder verificar cada una de ellas muy eficientemente. Mientras se pueda demostrar que:
+
+\begin{enumerate}
+  \item La firma es válida.
+  \item Cada entrada haga referencia a una salida no referenciada.
+  \item Los gastos de las salidas no superan a las ganancias de las entradas.
+\end{enumerate}
+
+Entonces la transacción será considerada válida.
+
+Sobre el segundo de los puntos enunciados se desprende un concepto sumamente importante, tanto para la verificación -como ya se ha mencionado- como también para calcular el balance de una dirección particular, y es el de UTXO (\textit{Unspent Transaction Output}, traducido aproximadamante a ``Salida de transacción no gastada'').
+
+\begin{figure}[H]
+  \includegraphics[height=8cm, width=10cm]{bitcoin_transactions_tree.png}
+  \centering
+  \caption{Árbol de transacciones (gráfico extraído de Bitcoin.org)}
+  \label{fig:bitcoin-transactions-tree}
+\end{figure}
+
+En el árbol de transacciones precedente, puesto como ejemplo, coexisten solamente dos UTXO, la salida 0 de la transacción 3 y 6, por ser las únicas que aún no están siendo referenciadas por ninguna entrada de transacciones posteriores. Por el contrario, el resto de las salidas ya fueron relacionadas a otras entradas y, por ende, se consideran ``gastadas''. El problema del doble gasto se soluciona en principio de esta manera, es decir, evitando que una entrada se asocie a una salida previa ya referenciada. Y con respecto a calcular el balance de una dirección, basta sólo con consultar por todas las UTXO con dicha dirección y sumarizar el valor de cada una.
+
+Ya presentada toda la terminología necesaria, ahora se presentará en mayor profundidad la estructura de las transacciones en Bitcoin, y fundamentalmente, el mecanismo de procesamiento y transferencia de los recursos. Se tomará como ejemplo la transacción 4 de la figura \ref{fig:bitcoin-transaction-bitcoincore} para mostrar cómo sería su composición en formato JSON y explicar en detalle las partes más importantes:
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[frame=single, belowskip=1em, aboveskip=2em,  language=javascript, captionpos=b, caption=Estructura JSON de una transacción en Bitcoin, label={lst:estructura_transaccion}]
+{
+  "txid": "2cc6c24ad0d71f26...", // txid transaccion 4
+  "version": 2,
+  "size": ...,
+  "vsize": ...,
+  "locktime": 0,
+  "vin": [
+    {
+      "txid": "1e71985325c3797b...", // txid transaccion 2
+      "vout": 1,
+      "scriptSig": {
+        "asm": "001496d847228e50f6032a3837b3f7cc915e7291d240",
+        "hex": "16001496d847228e50f6032a3837b3f7cc915e7291d240"
+      },
+      ...
+    }
+  ],
+  "vout": [
+    {
+      "value": 6,
+      "n": 0,
+      "scriptPubKey": {
+        "asm": "OP_DUP OP_HASH160 9545cfd22b756888fac4d2cca1dc6d389430acf2 OP_EQUALVERIFY OP_CHECKSIG",
+        ...
+      }
+    },
+    {
+      "value": 2,
+      "n": 1,
+      "scriptPubKey": {
+        "asm": "OP_DUP OP_HASH160 a2ca76b8716d612ae856d91d4b96c7c1a4f0a150 OP_EQUALVERIFY OP_CHECKSIG",
+        ...
+      }
+    }
+  ],
+  // ...(metadatos del bloque correspondiente)...
+  "time": 1551289194,
+},
+\end{lstlisting}
+\end{minipage}
+
+Del extracto JSON del ejemplo anterior, y en general para cualquier transacción de Bitcoin, se pueden identificar tres grandes grupos:
+
+\begin{itemize}
+  \item \textbf{Metadatos}: entre los metadatos figuran el identificador de la transacción (\textit{txid}), versión de la especificación (\textit{version}), tamaño de la transacción (\textit{size} y \textit{vsize}), momento de la transacción (\textit{time}) y datos referidos al bloque que contiene a la transacción.
+  \item \textbf{Lista de entradas}: representado por medio de un \textit{array} bajo la clave \textit{vin}. Por cada entrada se registra la transacción y el índice de la salida UTXO a reclamar (\textit{txid} y \textit{vout}, respectivamente) y un código de desbloqueo (\textit{scriptSig}) que será requerido para poder autenticar esta acción de forma correcta.
+  \item \textbf{Lista de salidas}: representado también por medio de un \textit{array} bajo la clave \textit{vout}. Cada salida tiene información de su valor monetario (\textit{value}), su índice (\textit{n}) y un código de bloqueo (\textit{scriptPubKey}) con información relacionada al beneficiario que sólo él podrá desbloquear al momento de hacer el reclamo de estas salidas (que así como están son UTXO dado que no han sido gastadas o reclamadas aún).
+\end{itemize}
+
+La mayoría de los datos presentes en una transacción de Bitcoin ya han sido desarrollados previamente. Resta comprender cómo se validan y autorizan las mismas, cuya clave se encuentra en los códigos de bloqueo y desbloqueo. Más precisamente, estos son sentencias de un lenguaje ensamblador (de ahí surgen las claves \textit{asm} del listado \ref{lst:estructura_transaccion}) propio de la plataforma. Esto es así dado que la red Bitcoin posee varios tipos de transacciones de acuerdo a qué partes de la transacción se incluyen para la firma, y por diseño, se delegan las reglas y las validaciones de estos distintos tipos en este microlenguaje\footnote{Está específicamente diseñado para validación de transacciones monetarias y, por tal razón, y para evitar problemas de seguridad computacional, no es Turing-completo.} que otorga suficiente flexibilidad para soportar los diferentes esquemas de comprobación existentes, e incluso, agregar otros\footnote{En la práctica, sin embargo, se ha limitado la inclusión libre de otros esquemas por razones de seguridad.} sin comprometer el diseño nuclear de Bitcoin.
+
+A continuación, se explicará el caso más común y simple, es decir, el de un emisor generando una o muchas salidas, el cual se encargará de firmar toda la transacción. Hacer una transferencia implicará que el emisor reclame un número suficientes de salidas no gastadas para cubrir los fondos a transferir, y con ellos, construir las entradas de la nueva transacción. Pero tales entradas requerirán, a su vez, códigos de desbloqueo para liberar los activos de esas salidas y demostrar, ante toda la red, que el emisor es el dueño autorizado para tal fin. Para ello, el emisor deberá armar previamente la transacción con las salidas y los activos listos a transferir al siguiente beneficiario junto a las salidas UTXO que intentará reclamar el emisor. Esto último será temporal, dado que en realidad deberían ir las entradas para que la transacción sea válida; en breve se entenderá el porqué. Tras esto, se obtiene una huella digital de la construcción previa y se firma la huella con una clave privada del emisor. Este paso es el que corresponde a la autorización de toda la transacción por parte del emisor (ver figura \ref{fig:bitcoin-transaction-paper}). Finalmente, a la firma obtenida se le concatena la clave pública del emisor. Estos dos datos conforman el código de desbloqueo que, ahora sí, se usan para armar las entradas faltantes y sustituirlas por las salidas temporales que se colocaron previamente. Antes, no era posible armar las entradas de arranque porque justamente se necesitaba para ello la firma total de la transacción con, al menos, las salidas referenciadas.
+
+Ahora bien, resta explicar cómo funciona el mecanismo de bloqueo y desbloqueo en las transacciones. Como se ha establecido anteriormente, se utiliza un microlenguaje para ejecutar la validación de las mismas, que se encuentra embebido allí mismo por razones de versatilidad. Para determinar si una transacción, o más específicamente, si las entradas de la misma se encuentran autorizadas a hacer uso o gasto de las salidas referenciadas, lo que se hace -desde el punto de vista de un tercero, por ejemplo- es copiar el código de desbloqueo de la/s entrada/s (\textit{scriptSig}) y, a continuación, el código de bloqueo de la salida UTXO referenciada (\textit{scriptPubKey}). Únicamente se autorizará y validará correctamente la transacción si y sólo si la ejecución de esa secuencia de códigos resulta exitosa, es decir, sin ninguna falla o problema.
+
+Una validación de propiedad de una transacción simple es como sigue:
+
+\begin{figure}[H]
+  \includegraphics[height=5cm, width=14cm]{bitcoin_transaction_validation.png}
+  \centering
+  \caption{Validación de propiedad de una transacción evaluando los códigos de desbloqueo y bloqueo}
+  \label{fig:bitcoin-transaction-validation}
+\end{figure}
+
+La ejecución procede de izquierda a derecha, ejecutando instrucción por instrucción. Una característica importante a destacar del lenguaje de \textit{scripting} de Bitcoin es que es orientado a pila, con lo cual, las instrucciones operarán siempre con datos en una estructura de tipo LIFO (\textit{Last-In-First-Out}, ``el último dato que ingresa es el primero en salir''). Otra propiedad del lenguaje es que, por un lado, se tienen instrucciones que procesan datos de la pila y, por otro lado, se tienen simplemente datos que al aparecer en la línea de ejecución se apilan en la estructura de datos global del entorno.
+
+Explicado el modelo de ejecución básico del lenguaje de Bitcoin, se procederá a examinar la ejecución de validación de la figura \ref{fig:bitcoin-transaction-validation}. En la figura \ref{fig:bitcoin-stacktrace-example} se mostrarán los cambios en la pila para ayudar a seguir la ejecución:
+
+\begin{enumerate}
+  \item Al principio de la línea de ejecución figuran los dos principales componentes del código de desbloqueo provenientes de una entrada de la transacción a validar: la firma (\textit{sig}) y la clave pública (\textit{PubK}) asociada a la clave privada de dicha firma. Dado que son simplemente datos, primero se apila la firma, y luego la clave pública, siendo este último dato ahora el tope de la pila.
+  \item Luego arranca la ejecución del código de bloqueo que hará la verificación real. En primer lugar, se ejecuta la instrucción \textit{DUP} cuya función es copiar el dato en el tope de la pila y volver a apilarlo.
+  \item Luego se ejecuta la instrucción \textit{HASH160} que lo que hace básicamente es obtener un \textit{hash} del último dato en la pila, el cual además, es quitado de la pila; en concreto, se termina ejecutando \textit{HASH160 PubK}. Finalmente este resultado es apilado.
+  \item Se apila \textit{PubKHash} que representaría la dirección destino de los fondos, o lo que coloquialmente se conoce dentro de la red Bitcoin como dirección Bitcoin\footnote{Es algo coloquial dado que conceptualmente hay que recordar que no existe la idea de dirección o cuenta en Bitcoin, es tan sólo una construcción por encima de la red.}.
+  \item La instrucción \textit{EQUALVERIFY} simplemente remueve los dos últimos datos de la pila y comprueba si son iguales. Esto significa que lo que se hace es comparar la dirección destino previamente apilada contra el valor \textit{Hash-160} de la clave pública provista de antemano en el código de desbloqueo, el cual debería producir la mencionada dirección. En otras palabras, esta verificación tiene como fin comprobar que la dirección o clave pública del reclamante de las salidas UTXO es el mismo que figura en dichas salidas. En caso de no ser iguales, la ejecución y la validación fallará y la transacción será declarada inválida.
+  \item Por último se ejecuta la instrucción \textit{CHECKSIG}. Su complejo trabajo consiste en constatar que la firma de la transacción es válida en función de la clave pública, ambos datos provistos desde el código de desbloqueo. Con esto, lo que se valida es que el reclamante de los fondos de las salidas no gastadas es verdaderamente el destinatario autorizado a gastarlas, ya que únicamente él con su clave privada pudo haber construido dicha firma, ratificada con la clave pública entregada.
+\end{enumerate}
+
+\begin{figure}[H]
+  \includegraphics[height=3cm, width=14cm]{bitcoin_stacktrace_example.png}
+  \centering
+  \caption{Seguimiento de los cambios en la pila durante la ejecución de la validación}
+  \label{fig:bitcoin-stacktrace-example}
+\end{figure}
+
+Tal como se mencionó, si toda la línea de ejecución termina sin errores, entonces la validación de propiedad resultará exitosa y las salidas reclamadas pasarán a estar en estado ``gastadas''.
+
+\paragraph{Bloque}
+\label{bc_bitcoin_block}
+
+Un bloque es una estructura que agrupa transacciones, básicamente. Si bien, desde un punto de vista puramente teórico, la blockchain de Bitcoin podría funcionar sin el concepto de bloque, la realidad es que es un fundamento imprescindible en la práctica a la hora de validar y sincronizar transacciones eficientemente, siendo muy significativa la diferencia en rendimiento entre hacer estas tareas en lote que si se hicieran individualmente por transacción.
+
+En primer lugar, y similar a como sucede con las transacciones, los bloques también se encadenan unos con otros, formando una cadena de bloques -o \textit{blockchain}-:
+
+\begin{figure}[H]
+  \includegraphics[height=8cm, width=14cm]{bitcoin_blockchain.png}
+  \centering
+  \caption{Cadena de bloques en Bitcoin}
+  \label{fig:bitcoin-blockchain}
+\end{figure}
+
+Como se puede ver, la figura \ref{fig:bitcoin-blockchain} remite mucho a lo ilustrado en las secciones \ref{bc_origins_blockchain} y \ref{bc_origins_merkle}, donde se define la idea de cadena de bloques y luego la inclusión de árboles de Merkle en ellas. Pues bien, aquí los conceptos serán esencialmente los mismos, es decir, se usará una cadena de bloques para proteger la integridad de los datos -en este caso, serían las transacciones- a medida que la misma crece, ya que cada bloque contendrá una huella digital de su cabecera, donde allí, habrá una referencia de la huella digital del bloque anterior. Y tal como se explicó en \ref{bc_origins_blockchain}, si un dato es alterado en un bloque previo, entonces dicho cambio repercutirá en los bloques siguientes puesto que el valor computado de sus huellas depende parcialmente de esas referencias hacia atrás en los bloques.
+
+Por otra parte, también como se puede ver en la figura \ref{fig:bitcoin-blockchain}, cada cabecera de bloque guarda una huella digital especial conocida como \textit{raíz Merkle} la cual sirve para validar eficientemente la integridad y la pertenencia de las transacciones que forman parte de un bloque determinado. Tal como se ha indicado en el apartado \ref{bc_origins_merkle}, el uso de árboles Merkle permite validar eficientemente -en orden de tiempo y espacio logarítmico- si una transacción se encuentra incluida en un bloque, además de proteger la integridad del bloque en caso que se agreguen, quiten o se alteren transacciones dentro de dicho bloque. Estas propiedades permiten que existan nodos que validen la veracidad de una transacción sin requerir toda la información o todas las transacciones del bloque.
+
+A continuación se mostrará la estructura de un bloque de ejemplo en formato JSON:
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[frame=single, belowskip=1em, aboveskip=2em,  language=javascript, captionpos=b, caption=Estructura JSON de un bloque en Bitcoin, label={lst:estructura_bloque}]
+{
+  // Cabecera del bloque
+	"version": 536870912,
+	"versionHex": "20000000",
+  "hash": "0000000000000000001a293907c5e1da...",
+	"chainwork": "00000000000000000000000000000000...",
+	"previousblockhash": "00000000000000000011b49510c6413d...",
+	"nextblockhash": "0000000000000000000a2a15026aab26...",
+	"merkleroot": "eeae080affb6c38462aec166c6abcd96...",
+	"confirmations": 20,
+	"strippedsize": 874261,
+	"size": 1370613,
+	"weight": 3993396,
+	"height": 565664,
+  "time": 1551727185,
+	"mediantime": 1551725107,
+	"nonce": 3827230916,
+	"bits": "172e5b50",
+	"difficulty": 6071846049920.752,
+  // Array de todas las transacciones
+  "tx": [
+    // ...
+  ]
+}
+\end{lstlisting}
+\end{minipage}
+
+Por un lado se tienen los datos de la cabecera, que podrían dividirse lógicamente en los siguientes grupos:
+
+\begin{itemize}
+  \item Huella del bloque: el campo \textit{hash} es la huella digital del bloque. Presenta características especiales referentes al minado y al consenso, que serán explicadas posteriormente.
+  \item Referencias a otros bloques: los campos \textit{previousblockhash} y \textit{nextblockhash} contienen las huellas digitales del bloque antecesor y posterior, respectivamente
+  \item Campos referentes al minado: \textit{nonce}, \textit{time} y \textit{difficulty} son campos relacionados al proceso de minado del bloque que se explicará luego.
+  \item \textit{merkleroot}: referencia o huella de la raíz Merkle.
+  \item Tamaño y altura: \textit{size} representa el tamaño total del bloque incluyendo las transacciones y \textit{height} denota la altura, esto es, el índice de bloque que le corresponde contando desde el primer bloque de la cadena, o bien, bloque génesis.
+\end{itemize}
+
+Y al final, se incluye el conjunto de todas las transacciones que pertenecen al bloque.
+
+\subsubsection{Consenso y minado}
+
+Esta sección versará sobre el consenso distribuido entre todos los participantes de la red, es decir, cómo alcanzan un acuerdo común sobre qué transacciones son válidas o no y el minado que es la forma de implementar dicha tarea.
+
+Dado que Bitcoin y su blockchain conforman una red distribuida, no existe una entidad o grupo de confianza al cual delegarle la verificación de las transacciones que se realizan sobre esta arquitectura. En términos equivalentes, no se dispone de un estado global administrado por un único veedor (por ejemplo, una base de datos en un sistema centralizado). En su lugar, se requieren estrategias para alcanzar un acuerdo unánime, o al menos mayoritario, sobre dicho estado de manera distribuida y ecuánime. Esto, en la terminología de sistemas distribuidos, es lo que se conoce como consenso distribuido.
+
+\paragraph{Problema de los Generales Bizantinos}
+\label{bc_bitcoin_gbp}
+
+Para comenzar con el análisis del consenso en Bitcoin, hay que tener en cuenta que la red -como ya se ha establecido- se encuentra distribuida geográficamente por todo el planeta y los usuarios finales son personas. La razón por la cual se exponen estás dos propiedades es para dejar asentado que en el funcionamiento regular de este sistema, la desconfianza será una variable siempre presente, ya sea fortuita, como en el caso de problemas técnicos en los enlaces o en los nodos conformantes de dicha red, o bien, intencional, como en el caso de que existan participantes deshonestos intentando conseguir alguna ventaja a través de técnicas espurias.
+
+Un interesante trabajo al respecto publicado en 1982 por los científicos Leslie Lamport, Robert Shostak y Marshall Pease, titulado ``El Problema de los Generales Bizantinos''\cite{Lamport82thebyzantine} emplea como analogía un escenario de guerra en el cual una ciudad enemiga se encuentra sitiada por varias divisiones lideradas cada una por un general bizantino. Todos ellos deben consensuar una orden en donde las posibilidades son ``atacar'' o ``retirarse''. Y el problema es que algunos de esos generales pueden ser traidores, esto es, comunicar órdenes contradictorias al momento del consenso de manera tal de confundir al resto de los generales. Asimismo, en el marco de este problema, quien inicia la orden es denominado ``Comandante'' y el resto de los generales ``Tenientes''. Establecido esto, una solución a este problema con $n$ generales es aquella en la cual, dado un Comandante que envía la orden a sus $n - 1$ Tenientes, se garantizan las siguientes condiciones:
+
+\begin{enumerate}
+  \item Todos los Tenientes leales obedecen la orden impartida por el Comandante.
+  \item Si el Comandante es leal, entonces cada Teniente leal obedecerá la orden que el Comandante impartió.\footnote{La 2da condición es más fuerte que la 1era}
+\end{enumerate}
+
+Es importante remarcar que estas condiciones son las que cualquier algoritmo de consenso debería tratar para resolver el problema de los generales bizantinos. Además, cualquier sistema que resuelva o sea inmune a este tipo de fallas se lo denomina tolerante a fallas bizantinas.
+
+En el trabajo de Lamport se analizan diferentes casos según la cantidad de generales y traidores y según el canal de comunicación -oral o escrito-. En el más general de todos los casos, con $m$ generales, se requiere que más de dos tercios de esos $m$ generales sean honestos y/o leales.
+
+Asimismo, se plantean algunas soluciones teóricas al problema, pero recién en el año 1999, Miguel Castro y Barbara Liskov publicarían una variante de solución junto a una implementación probada tanto en correctitud como en rendimiento\cite{Castro:1999:PBF:296806.296824}, pero presenta dos problemas: en primer lugar, nunca fue bien probado en arquitecturas grandes y se sospecha que no escala muy bien dada la gran cantidad de mensajes que deben intercambiarse para lograr un consenso mayoritario. Y por último, y quizás más importante, es que el funcionamiento del mismo depende de la autenticación de los nodos, lo cual, en blockchains públicas y anónimas como Bitcoin es inadmisible. Por estas razones, normalmente las blockchains que utilizan este algoritmo de consenso en la actualidad son pequeñas y privadas, donde incluso, hay nodos que están bien identificados ante todos.\footnote{\href{https://blockonomi.com/zilliqa-guide/}{Zilliqa}, \href{https://www.hyperledger.org/projects/fabric}{Hyperledger}, \href{https://neo.org/}{Neo}}
+
+\paragraph{Prueba de trabajo}
+\label{bc_bitcoin_pow}
+
+Satoshi Nakamoto propuso en su diseño de la blockchain de Bitcoin usar Prueba-de-Trabajo (o PoW, del inglés Proof-of-Work) como algoritmo de consenso. La razón fundamental para sustentar su decisión es que permite consenso entre pares sin requerir autenticación o prueba de identidad. El único requisito, suficiente para colocar un nuevo bloque dentro de la cadena, es demostrar que se ha realizado un trabajo computacional exhaustivo para ello. Claramente esto está fuertemente inspirado en lo realizado por Adam Back en Hashcash, explicado previamente en la sección \ref{bc_origins_hashcash}.
+
+Cuando no se puede contar con identidades en un sistema distribuido y es necesario validar o lograr un consenso de algún tipo, uno de los potenciales problemas de seguridad a atacar es impedir que nodos maliciosos difundan información ilegítima en la red y consigan que ella sea parte de su estado global. Esto es lo que se conoce como ataque \textit{Sybil}.
+
+La prueba de trabajo evita este tipo de ataques forzando a que el costo de validar un bloque para tener la chance de ser incluida en la cadena de bloques sea muy alto, con lo cual, ya no tendría más sentido la ventaja de controlar gran cantidad de nodos para intentar adulterar la red, salvo que se disponga de mucho poder computacional, lo cual será analizado en la sección \ref{bc_bitcoin_security}.
+
+La siguiente cuestión a resolver es cómo compensar a aquellos participantes honestos de la red que invierten su poder computacional para mantener el buen funcionamiento de la red. Y es tal vez aquí donde entra en escena una de las principales innovaciones de Bitcoin respecto a los algoritmos de consenso, y es el incentivo a través del minado. Bitcoin es una cadena de bloques de transacciones monetarias, con lo cual, posee como propiedad que las transacciones tienen un valor económico. En general, en la gran mayoría de las transacciones intervienen dos participantes o grupos, quien transfiere fondos y el/los beneficiarios. No obstante, existe un tipo de transacción especial denominada ``\textit{Coinbase transaction}'' (se podría traducir aproximadamente a ``transacción de acuñado o minado'') que todo bloque debe poseer para ser considerado válido. Este tipo de transacción crea o emite monedas, es decir, no tiene entradas, sólo una o más salidas hacia direcciones arbitrarias, normalmente, direcciones propias del participante que está realizando la validación de ese bloque. De esta forma, si el bloque es aceptado por el consenso distribuido, el nodo que realizó la validación y la prueba de trabajo pertinente tendrá como recompensa el derecho de gastar la entrada que generó monedas. Por esta razón, esto también se conoce como minado, puesto que se realiza un trabajo muy arduo en pos de obtener a cambio una retribución monetaria.
+
+La prueba de trabajo en sí, en Bitcoin, consiste en hallar un número \textit{nonce} (mencionado en \ref{bc_bitcoin_block}) tal que la huella digital computada de él junto a la información de la cabecera del bloque, como por ejemplo, el \textit{hash} puntero al bloque previo y los \textit{hashes} que resumen a todas las transacciones contenidas (el \textit{merkleroot}) den un número de \textit{hash} menor a un objetivo -\textit{target}-, o de forma equivalente, den un \textit{hash} que comience con determinada cantidad de ceros. Formalmente sería:
+
+\begin{equation}
+H(nonce \| hash\_previo \| merkleroot) < target
+\end{equation}
+
+Dada la aleatoriedad de la función de hash $H$, encontrar el $nonce$ que satisfaga la inecuación es una tarea de fuerza bruta, y por consiguiente, muy ardua. Quien consiga resolver la prueba, por otra parte, tiene derecho a difundir su bloque de transacciones con su prueba de trabajo y el resto de los participantes podrá realizar las verificaciones pertinentes, incluso la de la prueba de trabajo, de una forma muy sencilla. Otro de los parámetros mencionados en \ref{bc_bitcoin_block} era la dificultad -\textit{difficulty}-, el cual es un factor que permite reajustar el \textit{target} de manera tal que la prueba de trabajo sea más fácil o más difícil de resolver. Este parámetro es controlado dinámicamente por toda la red en pos de mantener un tiempo promedio de validación de bloques de 10 minutos. La razón de esta cifra es algo arbitraria, pero en la práctica de la red Bitcoin funciona razonablemente bien. Con menos tiempo se corre el riesgo de sobrecargar la red con nuevos bloques -perdiendo rendimiento- y con más tiempo haría que la confirmación de las transacciones sea demasiado lenta.
+
+Queda pendiente ver cómo es la confirmación de los bloques y si realmente este método es tolerante a fallas bizantinas. Pero para ello será necesario avanzar un poco en explicar la mecánica general de la red Bitcoin.
+
+\subsubsection{Funcionamiento de la red}
+\label{bc_bitcoin_net_overview}
+
+En esta sección se describirá y analizará el funcionamiento global de la red Bitcoin. Lo primero a tener en cuenta es que en la red Bitcoin, al ser una red P2P\footnote{\textit{Peer-to-Peer} ``Par a par''}, todos los nodos tienen la capacidad de realizar las mismas tareas, es decir, poseen el mismo potencial para realizar cualquier trabajo que sea requerido por la red. De todas formas, en la realidad, cada nodo normalmente posee un rol dentro de la red, pero no existe restricciones explícitas sobre tales asignaciones. Dicho esto, a continuación se citarán los pasos de ejecución de la red, descritos en el \textit{paper} de Nakamoto:
+
+\begin{enumerate}
+  \item Las transacciones nuevas se transmiten a todos los nodos.
+  \item Cada nodo recoge todas las transacciones en un bloque.
+  \item Cada nodo trabaja en resolver una prueba de trabajo compleja para su bloque.
+  \item Cuando un nodo resuelve una prueba de trabajo, transmite el bloque a todos los nodos.
+  \item Los nodos aceptan el bloque si todas las transacciones en él son válidas y no se han gastado con anterioridad.
+  \item Los nodos expresan su aceptación del bloque al trabajar en crear el siguiente bloque en la cadena, usando el \textit{hash} del bloque aceptado como \textit{hash} previo.
+\end{enumerate}
+
+Cuando un nodo crea una transacción, ésta se propaga a través de los nodos vecinos y así sucesivamente hasta cubrir toda la red. Cada nodo es capaz por sí mismo de validar las transacciones de forma independiente, dada la naturaleza P2P de la red. Un nodo difunde la transacción sobre el resto si y sólo si la misma es válida, de lo contrario, es descartada. Una vez validadas por el nodo, las transacciones se recopilan temporalmente en una memoria denominada \textit{mempool}: allí residen todas las transacciones que han sido recibidas y validadas por un nodo particular. Luego, un nodo selecciona y remueve de esa \textit{mempool} unas cuantas transacciones para conformar un bloque y trabaja en resolver la prueba de trabajo para él. Durante este proceso, puede suceder que el nodo reciba otros bloques válidos en donde las transacciones coincidan con las que están en vías de validación, en cuyo caso, el nodo deberá reiniciar el trabajo con un nuevo bloque y otras transacciones no confirmadas en la cadena aún, eliminando las transacciones ya validadas por otros nodos de su propia \textit{mempool}. Si, en cambio, el nodo consigue resolver la prueba de trabajo de su bloque, éste se transmite al resto de los nodos los cuales realizarán las validaciones pertinentes, es decir, revisarán que todas las transacciones conformantes sean legítimas y corroborarán la prueba de trabajo. Si es válida, cada nodo comienza a trabajar sobre un nuevo bloque partiendo del aceptado -el \textit{hash} previo del nuevo bloque será el \textit{hash} de este último bloque- y propaga el recibido sobre los otros nodos, mientras que si no es válido -ya sea por alguna transacción defectuosa o espuria, o porque la prueba de trabajo no es legítima-, lo rechaza y no lo transmite al resto de la red (tal como sucede con una transacción individual).
+
+Lógicamente, dado el funcionamiento concurrente y descentralizado de la red, puede darse casos en dónde más de un nodo difundan bloques válidos hacia el resto en una ventana relativamente corta de tiempo, de manera tal que la cadena de bloques diverge temporalmente, esto es, hay varios bloques apuntando a un mismo bloque previo a la vez. Este problema se resuelve eventualmente teniendo presente que siempre, en todos los casos, los nodos eligen extender la cadena de bloques más larga en caso de existir divergencias. Por supuesto, tal como se mencionó recién, pueden generarse situaciones en donde existan en momentos puntuales dos cadenas de igual longitud que sean válidas, pero a lo largo del tiempo, dada la competencia entre los nodos por validar bloques rápidamente, estos mismos decidirán extender una de esas cadenas y las otras serán descartadas automáticamente, prevaleciendo en el tiempo siempre una única cadena. Analizándolo desde otra perspectiva, es improbable que dada una bifurcación, ésta perdure en el tiempo a través de dos cadenas de longitud equivalente, a menos que la mitad de los nodos de la red coordinen para apoyar el crecimiento de una, mientras que la otra mitad mantiene la otra cadena, respectivamente.
+
+Elegir extender determinada cadena de bloques, como decisión, representa dar un voto con el poder de cómputo del nodo. Dado que la regla de facto en la red es siempre extender la cadena más larga, está cadena será, en consecuencia, aquella con la mayor cantidad de trabajo acumulado. Y esto mismo es lo que permite, en el tiempo, lograr el consenso distribuido requerido. En referencia al Problema de los Generales Bizantinos desarrollado en \ref{bc_bitcoin_gbp}, se puede establecer un paralelismo entre las condiciones o propiedades necesarias para una posible solución y algunas de las características del consenso en Bitcoin:
+
+\begin{enumerate}
+  \item Todos los nodos honestos trabajan en la colocación de los bloques dentro de la cadena principal.
+  \item Si un bloque es válido, entonces cada nodo honesto trabajará en colocar ese bloque en la cadena principal.
+\end{enumerate}
+
+Esto, en concordancia con el incentivo a cada nodo validador y la prueba de trabajo, hace que la red en la práctica sea tolerante a fallas bizantinas dado que, por un lado, las fallas aleatorias o triviales, como por ejemplo, defectos en los bloques o en las transacciones, son descartados por cada nodo y, por otro lado, las fallas deshonestas son muy difíles de llevar a cabo bajo este sistema, tal cómo se analizará en la próxima sección.
+
+\subsubsection{Robustez y/o seguridad de la red}
+\label{bc_bitcoin_security}
+
+En esta sección se cubrirán algunos de los principales y posibles ataques que podría sufrir la red blockchain y cómo la misma garantiza un nivel de seguridad lo suficientemente aceptable como para realizar transacciones monetarias.
+
+En primer lugar, se podría plantear la duda más primordial y también severa acerca de si las ``monedas'' podrían robarse de algún modo. A menos que se encuentren fallas en los algoritmos de criptografía asimétrica utilizados, realizar esto es imposible. Recordar de la parte \ref{bc_bitcoin_transaction} que dichas ``monedas'' se representan como salidas no gastadas (UTXO) y la única manera de reclamarlas es utilizando la clave privada -la cual es única para el beneficiario de esas salidas- adecuada dentro del código de desbloqueo de las entradas generadas en la nueva transacción, de manera tal de liberar el código de bloqueo de la salidas y así hacer que la transacción sea válida.
+
+Otro posible ataque menor es la denegación de servicio, esto es, hacer que deliberadamente determinadas transacciones no conformen bloques con la idea de que no se integren nunca a la cadena, teniendo presente que cada nodo es libre de elegir las transacciones que usará para validar un bloque. El hecho de que uno o más nodos coordinen para no elegir ciertas transacciones no basta para que éstas no sean incluidas en la cadena eventualmente, ya que el resto de los nodos independientes trabajarán para incluir a todas las transacciones presentes en la red, sin distinción. Mientras el grupo honesto e independiente de nodos sea mayor al maligno, este ataque no podrá tener éxito.
+
+Luego, existe otro tipo de ataque muy estudiado -que incluso aparece en el paper de Nakamoto- que es el ``ataque del doble gasto''. Esto consiste en crear dos transacciones (cada una con una entrada) que reclamen una misma salida UTXO. El doble gasto dentro de una única cadena está prohibido ya que, como se ha visto, la transacción será válida si las salidas a consumir no han sido referenciadas en otras transacciones, es decir, no fueron gastadas. Pero podría darse está situación en dos cadenas: una primera transacción $t_1$ que consuma una salida $s$ dentro de un bloque de la cadena actual y una segunda transacción $t_2$ que consuma la misma salida $s$ pero en un bloque de la cadena alternativa. Dado que $t_1$ y $t_2$ hacen referencia a la misma salida $s$, sólo una de ellas podrá ser incluida en la cadena principal (la otra será invalidada y, por ende, descartada). Si esas cadenas tienen la misma longitud, cualquiera de esas dos transacciones podrán ser aceptadas con igual probabilidad, ya que no hay preferencias acerca de qué cadena seguir extendiendo. En este tipo de ataques, en general, $t_1$ es una transacción honesta desde un usuario $A$ hacia un usuario $B$, en donde $A$ espera, a cambio de la transacción, algún valor proveniente de $B$ -un producto o un servicio- y luego de este evento, $A$ genera la transacción $t_2$ malintencionada -aunque no inválida por el momento- destinada a una dirección $A'$ -controlada por $A$- diseñada para seguir manteniendo los fondos de $A$ intactos y, asimismo, invalidar la transacción $t_1$ que hizo el gasto real. Si el ataque es exitoso, $A$ se habrá quedado con el valor de $B$ sin haber realizado gasto alguno.
+
+Un ejemplo muy similar a lo expuesto previamente se grafica a continuación:
+
+\begin{figure}[H]
+  \includegraphics[height=6cm, width=12cm]{bitcoin_double_spend_example.png}
+  \centering
+  \caption{Ejemplo de ataque de doble gasto}
+  \label{fig:bitcoin-double-spend-example}
+\end{figure}
+
+En donde $C_A \rightarrow B$ sería la transacción $t_1$ y $C_A \rightarrow A'$ representaría a la transacción $t_2$.
+
+Dado que un ataque de doble gasto es una de las formas más sencillas de crear una historia alternativa de la cadena principal, la misma se emplea como caso de estudio maestro a la hora de analizar la robustez de la red. En el análisis probabilístico que realizó Satoshi Nakamoto -y otros autores como se ve en \cite{DBLP:journals/corr/OzisikL17} y en \cite{DBLP:journals/corr/Rosenfeld14}-, básicamente los parámetros que se encuentran siempre presentes en dichos estudios son:
+
+\begin{enumerate}
+  \item La probabilidad de que algún nodo honesto encuentre el siguiente bloque, la cual, es directamente proporcional al poder de cómputo controlado por dicho grupo de nodos.
+  \item La probabilidad de que algún nodo deshonesto encuentre el siguiente bloque, la cual, es directamente proporcional al poder de cómputo controlado por dicho grupo de nodos.
+  \item La cantidad de confirmaciones que presenta la cadena honesta respecto al bloque a atacar. Dicho de otra manera, la cantidad de bloques a reescribir y validar hasta llegar a alcanzar la longitud de la cadena principal (honesta).
+\end{enumerate}
+
+En el estudio de Nakamoto se formula el problema en términos de la siguiente ecuación:
+
+\begin{equation}
+  q_z = \begin{cases*}
+    1         & \text{si} $p \leq q$\\
+    (q/p)^z   & \text{si} $p > q$
+        \end{cases*}
+\end{equation}
+
+donde $p$ y $q$ corresponden a los puntos (1) y (2) respectivamente del párrafo anterior y $q_z$ refleja la probabilidad de que algún atacante alcance la cadena honesta desde $z$ bloques atrás, es decir, está estrechamente relacionado con el punto (3).
+
+Algunas implicaciones de la ecuación anterior son: si $q$ es mayor que $p$, es decir, si la probabilidad del grupo atacante en validar el próximo bloque es mayor a la de los nodos honestos, eventualmente la cadena deshonesta alcanzará a la honesta, con lo cual, la probabilidad $q_z$ es 1. Si, en cambio, la probabilidad de los nodos honestos para encontrar el siguiente bloque es mayor a los deshonestos, entonces la probabilidad $q_z$ se verá muy disminuida en función de la cantidad de bloques $z$ que haya por delante en la cadena honesta.
+
+La cuestión en los diversos estudios es poder hallar un valor de equilibro de $z$ en donde $q_z$ sea lo suficientemente pequeño y $q$ razonable (siempre $q < p$). En términos más concretos, la pregunta a contestar es: ¿cuántas confirmaciones de bloques es conveniente esperar ($z$) tal que la posibilidad de ataque ($q_z$) sea prácticamente despreciable, aun suponiendo que los nodos atacantes poseen un buen poder de cómputo ($q$ considerable pero menor que $p$)?
+
+El paper de Nakamoto formula su estudio probabilístico en base a una distribución de Poisson, el cual, es cuestionado en la precisión y en algunos detalles del modelo estadístico empleado por \cite{DBLP:journals/corr/OzisikL17} y \cite{DBLP:journals/corr/Rosenfeld14}, donde este último sugiere, incluso, usar una distribución binomial negativa. Independientemente de las discrepancias, todos los cálculos manifiestan que el valor de $z$ apropiado es 6, es decir, con 6 confirmaciones de bloques es virtualmente imposible revertir el estado de una transacción en la red, al menos para un valor de $q$ bajo.
+
+En vista de estos estudios, se puede concluir que la red es tolerante a fallas bizantinas en un sentido probabilístico. Si bien, desde un punto de vista estrictamente teórico, esto no alcanza para afirmar que el consenso distribuido usado en Bitcoin resuelve el Problema de los Generales Bizantinos, en la práctica, desde su puesta en marcha ha demostrado funcionar y mantenerse tolerante a dicho tipo de fallas. Aún hay varios trabajos que están intentando fortalecer estas propiedades y buscando alternativas -por ejemplo \cite{kogias2016enhancing}, el cual busca incorporar elementos de PBFT \cite{Castro:1999:PBF:296806.296824}- pero también se debe tener en cuenta que la validación independiente de transacciones y bloques y el anonimato no pueden sacrificarse al momento de buscar mejoras, al menos para una red con las características de Bitcoin.
+
+\subsubsection{Recapitulación}
+
+En esta sección se han desarrollado los conceptos fundamentales de la blockchain de Bitcoin: sus inicios, sus componentes constituyentes -la transacción como unidad de transferencia de recursos entre participantes de la red, y el bloque como unidad aglutinante de las primeras para facilitar su validación y su verificación-, el consenso distribuido logrado en la práctica a través de la prueba-de-trabajo, la cual, permite mantener el estado global y distribuido de la red en forma consistente; la importancia de la tolerancia a fallas bizantinas junto a su desarrollo histórico, el funcionamiento de la red en modo P2P\footnote{Peer-to-Peer, Par-a-Par}, en donde todos los nodos son capaces de llevar a cabo cualquier tarea -desde ejecutar transacciones hasta validar y verificar bloques- y algunas cuestiones referentes a la seguridad de la red y cómo su diseño permite mitigar determinados ataques hacia ella misma.
+
+En estos últimos años, los inmensos potenciales de la tecnología blockchain implementada exitosamente por Bitcoin han disparado otras investigaciones y desarrollos en pos de expandir el dominio de uso más allá del monetario, y poder construir aplicaciones más genéricas que estén respaldadas por todas las ventajas de este tipo de arquitecturas. En la siguiente sección se desarrollará en profundidad un caso paradigmático respecto a estas ideas.
+
+\subsection{Ethereum: blockchain con Contratos Inteligentes}
+
+En este apartado se dará lugar al desarrollo de Ethereum, la blockchain que permite hacer uso de lógica mucho más general y abiertamente programable por terceros, bajo la noción de ``contrato inteligente''. Se tratará en esta sección de remarcar las diferencias y las funcionalidades adicionales respecto a Bitcoin, dado que en muchos aspectos esenciales, Ethereum mantendrá la misma línea. Por lo tanto, si se omite información sobre detalles de componentes o comportamiento en esta parte, se deberá asumir que es exactamente igual o muy similar a como es en Bitcoin.
+
+\subsubsection{Historia}
+
+Retomando el capítulo anterior se puede describir de una manera reducida a Bitcoin como un libro mayor de transacciones definido como un sistema de transiciones de estados, el cual permanece en un estado consistente hasta que se produce una transacción -movimiento de una cierta cantidad de criptomonedas de una cuenta a otra- que da como resultado un nuevo estado consistente. Este sistema de transacciones de estados se encuentra desplegado en una red distribuida y descentralizada, por lo que necesariamente cuenta con un sistema de consenso que garantiza que todos los nodos que conforman la red estén de acuerdo con los nuevos estados que se producen a partir de las transacciones enviadas a la red. Como se explicó en los capítulos \ref{bc_origins_hashcash} y \ref{bc_bitcoin_pow}, este sistema o protocolo de consenso se denomina Prueba-de-Trabajo y es ejecutado por cualquier nodo que valide bloques en la red, los cuales son encargados de introducir nuevos bloques de transacciones dentro del libro mayor. La prueba de trabajo previene intentos de ataque \textit{sybil} o de doble gasto, impidiendo que los atacantes rearmen toda la cadena a su favor y a su vez es tolerante al problema de los generales Bizantinos sobre sistemas distribuidos (discutido en \ref{bc_bitcoin_pow} y en \ref{bc_bitcoin_security}).
+
+En resumen Bitcoin es la combinación de una red descentralizada, criptografía y un mecanismo de consenso que permite crear una moneda virtual totalmente distribuida sin necesidad de confiar en una entidad central que la emita o controle. Esta tecnología en la cual actualmente funciona Bitcoin se la denomino cadena de bloques -blockchain- en honor a la naturaleza de su estructura.
+
+A partir de la implementación de Bitcoin en el año 2009 surgieron muchas ideas de aplicar distintos conceptos utilizando blockchain como plataforma, incluso años anteriores se había empezado a plantear estos conceptos de aplicaciones sobre sistemas descentralizados, pero ninguno fue implementado debido a que en ese entonces no existía ningún protocolo que reuniera las características de seguridad que posee Bitcoin. En el año 1998, Nick Szabo escribe un ensayo introduciendo el concepto de ``Títulos de propiedad seguros con autorización del propietario''\cite{szabo1998secure}, que describe una aplicación que utiliza una base de datos publica y distribuida para proteger los registros de propiedad del deterioro, falsificación o destrucción, mediante la digitalización de los mismos y para evadir los posibles problemas que conlleva la utilización de un sistema electrónico centralizado. Luego del 2009 comenzaron a surgir ideas que ya podrían ser implementadas gracias a la puesta en producción de la primer blockchain, Bitcoin.
+
+Esta primera implementación blockchain provee un lenguaje de scripting que es utilizado para realizar la validación de las transacciones como se explicó en el capítulo \ref{bc_bitcoin_transaction}, permitiendo también realizar transacciones aún más complejas, como lo son las transacciones con cuentas multifirma. Este lenguaje agrega cierta lógica a las transacciones, como por ejemplo, la utilización del concepto de contrato \textit{escrow}, donde dos partes firman un acuerdo de venta de un bien y en este caso la tercer parte que actúa como árbitro en dicho intercambio sería la blockchain. Este lenguaje es muy limitado y carece de instrucciones de máquina tales como los saltos, debido a que se desea evitar bucles infinitos en la verificación de transacciones. Otra de las desventajas que posee es que los UTXO de un usuario sólo pueden ser gastados o conservados, esto quiere decir que no puede haber ningún estado intermedio como ``bloqueado'' o ``reservado'', que podría ser útil para la realización de transacciones para contratos de múltiples facetas. Sin embargo este lenguaje de \textit{scripting} proporcionado por Bitcoin fue utilizado para implementar blockchains alternativas.
+
+\paragraph{Namecoin}
+
+Como ya se describió anteriormente las billeteras o direcciones de usuarios son un hash -cadena de números y letras de una determinada longitud- que son creadas aleatoriamente, las cuales son difíciles de recordar. Por lo que Namecoin propone una solución a este problema creando en 2010 un registro de nombres descentralizado que guarda un nombre escogido por el usuario como clave y una dirección de usuario como valor. Namecoin fue el primer fork de Bitcoin y fue la primera solución al triangulo de Zooko\footnote{Un \textit{trilema} en donde se busca equilibrar los siguientes propiedades: humanamente legible, descentralizado y seguro}, produciendo un sistema de registro de nombres que sea seguro, descentralizado y legible para los humanos.
+
+\paragraph{Colored coins}
+
+Esta implementación se basa en la utilización del cliente de Bitcoin y la idea es poder identificar el origen de las UTXO que posee un usuario en su poder. Con el motivo de poder realizar un seguimiento de la moneda, el usuario puede asignarle un color a dichos UTXO. Estas monedas asociadas a un color pueden tener propiedades especiales respaldadas por el usuario emisor o por acuerdo público, y cada color podría tener un valor independiente del valor nominal de los bitcoins subyacentes.
+
+Como se puede observar, Bitcoin atrajo nuevas ideas sobre cómo utilizar el cómputo distribuido, construyendo nuevas blockchain corriendo sobre el protocolo de Bitcoin y con su propia lógica transaccional. Esto trae como consecuencia que toda nueva implementación inevitablemente recaiga en la construcción de una nueva red de blockchain desde cero, por lo que es necesario contar con una cierta cantidad inicial de nodos que realicen validación de bloques (mineros) para poder conseguir la seguridad necesaria y generar confianza a los usuarios finales. Además, cabe destacar que cuentan con todas las limitaciones que otorga el lenguaje de \textit{scripting} heredado de Bitcoin para la implementación de la misma.
+
+\paragraph{Ethereum}
+
+Ethereum nace de la necesidad de construir una única red blockchain con la capacidad de contar con las características del protocolo Bitcoin y agregándole, a su vez, una capa que permita a los desarrolladores crear aplicaciones que ejecuten cómputo sobre instrucciones más complejas que las que otorga el lenguaje de \textit{scripting} de Bitcoin. En octubre del 2013, un joven programador y entusiasta de Bitcoin llamado Vitalik Buterin sube a Internet un ensayo titulado ``Ethereum: Una nueva generación de contratos inteligentes y plataforma de aplicaciones descentralizadas''\cite{Buterin2014}, el cual describe una blockchain con características similares a Bitcoin pero con un fin más amplio. Este ensayo enmarca el hecho de que Ethereum posee ciertas cualidades que la categorizan como una máquina distribuida Turing-completa y de propósito general, que permite el desarrollo de aplicaciones descentralizadas. Estas son posibles de realizar mediante la programación de contratos inteligentes, utilizando un lenguaje que provee las herramientas necesarias como para construir código avanzado y poder así plasmar reglas de negocio, formato de transacciones, contratos con balance monetario y la posibilidad de ser disparado únicamente si ciertas condiciones son cumplidas, entre otras funcionalidades. Según el artículo escrito por Vitalik, la filosofía de Ethereum cuenta con los siguientes puntos claves:
+
+\begin{enumerate}
+  \item Simplicidad: El protocolo debe ser lo más simple posible para que cualquier programador promedio pueda utilizar Ethereum sin inconveniente alguno. Cualquier mejora que se pueda realizar al protocolo no debe agregarse a menos que proporcione un cambio muy importante.
+  \item Universalidad: Ethereum proporciona una máquina Turing-completa que permite al programador escribir cualquier fragmento de código que pueda definirse matemáticamente.
+  \item Modularidad: La partes de Ethereum deben ser diseñadas de una forma modular para posibilitar el uso de las mismas lo más separadas posible. La idea es que si se realiza una modificación en alguna de las partes no afecte el acoplamiento de todas las demás que conforman a Ethereum.
+  \item Agilidad: Si bien el protocolo es estricto en cuanto a las modificaciones y/o actualizaciones, estas se podrán realizar bajo el consentimiento de todas las partes que conforman a Ethereum y la comunidad global que la utiliza.
+  \item No discriminación y no censura: El protocolo no debe intentar restringir o prevenir ningún tipo de uso. Por lo que los mecanismos reguladores están diseñados para que el mal uso por parte de los usuarios o programadores no dañe la red.
+\end{enumerate}
+
+\subsubsection{Componentes de la blockchain}
+
+Como se mencionó anteriormente, Ethereum está basado en Bitcoin, por lo tanto, utiliza o redefine todas las componentes que conforman a Bitcoin más las componentes necesarias para poder realizar no sólo transacciones, sino que también realizar cómputo descentralizado. A continuación se detallará las características de cada componente y las diferencias con las de Bitcoin, en el caso de haberlas.
+
+\paragraph{Red P2P}
+
+Ethereum es una red \textit{peer-to-peer} y conecta todo sus nodos a través de la red principal denominada Mainnet. El protocolo que utilizan para el descubrimiento y enrutamiento de nodos se llama DEVp2p. Este protocolo a su vez utiliza un subconjunto del protocolo llamado Kademlia que básicamente es una tabla \textit{hash} distribuida desarrollada para ser utilizada en redes de intercambio de archivos de par a par.
+Cada nodo posee información útil de otros nodos que le permite generar un criterio a la hora de realizar la búsqueda y conexión con otros nodos, como por ejemplo, la latencia promedio de los nodos. Cada nodo se identifica por su clave pública criptográfica, que es un número único del cual se realiza un \textit{hash} SHA3 que da como resultado un valor en 256 bits denominado \textit{enode}. Esta clave pública se utiliza para calcular métricas de distancia dentro del protocolo Kademlia.
+
+Cada nodo debe tener instalado una aplicación cliente que hoy en día posee varias implementaciones en diferentes lenguajes, los más populares son Geth -desarrollado en Go- y Parity -desarrollado en Rust-. Estas aplicaciones clientes permiten realizar diferentes configuraciones, como por ejemplo, cambiar los números de puerto por defecto, habilitar o deshabilitar ciertos módulos de la API, o bien, activar el uso de base de datos indexado para una mejor trazabilidad de las transacciones realizadas en la blockchain.
+
+El estado de Ethereum se almacena localmente en cada nodo como una base de datos -generalmente se utiliza LevelDB de Google-, que contiene las transacciones y el estado del sistema en una estructura de datos de \textit{hash} serializada conocida como Merkle Patricia Trie, similar al árbol de Merkle descrito en \ref{bc_origins_merkle}.
+
+\paragraph{Cuentas en Ethereum}
+
+Como Ethereum utiliza un protocolo más genérico y admite un lenguaje de programación que se ejecuta en una maquina Turing-completa, es necesario la implementación de un modelo de cuentas un tanto más complejas que las de Bitcoin. Las cuentas en Ethereum son las encargadas de realizar modificaciones en el estado de la blockchain mediante las transacciones.
+
+Existen dos tipos de cuentas:
+
+\begin{itemize}
+  \item Cuentas de propiedad externa.
+  \item Cuentas de contratos.
+\end{itemize}
+
+Las cuentas externas son controladas por los usuarios que poseen la clave privada de la misma y ésta es la componente clave ya que permite realizar la firma sombre las transacciones y así adjudicarlas a la cuenta. Estas claves privadas no se utilizan directamente en Ethereum y no forman parte de las transacciones, por lo que se considera una buena práctica el almacenamiento seguro de la clave privada para no perder la propiedad de las transacciones firmadas con dicha clave. Este tipo de cuenta posee un balance en \textit{ether}, puede enviar transacciones ya sea para transferir fondos o ejecutar funciones en contratos y no poseen código asociado.
+
+Por otra parte, las cuentas de contrato residen dentro de la blockchain y son controladas por el código que se almacena en el contrato. Se podría decir que los contratos son agentes autónomos que viven dentro de la red, y a su vez, poseen y controlan un balance interno en \textit{ether}. El código interno que poseen es ejecutado mediante transacciones recibidas por otras cuentas ya sean externas o de otros contratos. Cuando el código es ejecutado puede o no cambiar el estado interno de las variables asociadas a dicho contrato.
+
+Las cuentas de Ethereum están conformadas por un par de claves pública y privada. La claves privadas, como se explicó anteriormente, son utilizadas por aplicaciones de billeteras para realizar las firmas sobre las transacciones y las claves públicas son utilizadas para corroborar la pertenencia de las transacciones y crear lo que se conoce como direcciones de cuenta. Estas direcciones son una porción de lo que es la clave pública del par de claves y se utilizan como destinatario para realizar depósitos o consultas de balances; en el caso de los contratos se utilizan como dirección de alojamiento -pero no proviene del par de claves, pública y privada-.
+
+\paragraph{Capa de almacenamiento de datos}
+\label{bc_ethereum_data_layer}
+
+Ethereum se compone de muchas partes y cuando se dice que es una máquina de estado global -o máquina de estado basada en transacciones, según \cite{wood2014ethereum}- se refiere a que en cualquier momento se puede consultar el estado de la red entera a determinado punto de tiempo. Como Ethereum está diseñada para programar sobre ella se necesitan ciertas componentes para mejorar la interacciones por parte de los desarrolladores, como lo es la capa de almacenamiento de datos. A lo largo de esta sección quedará demostrado como se almacena el estado global de Ethereum y se explicará a grandes rasgos el funcionamiento de la tecnología que utiliza para hacerlo, los árboles Merkle Patricia Trie.
+
+A partir de lo explicado en la subsección \ref{bc_bitcoin_transaction} sobre transacciones en Bitcoin, se podría inferir que el estado en dicha blockchain está representado como una colección de UTXO en un punto determinado en el tiempo. La transferencia de monedas de una cuenta a otra modifica dicho estado y es realizado a través de las transacciones. El balance de una cuenta en Bitcoin es una noción abstracta, puesto que el valor no es almacenado directamente en la blockchain sino que es el cálculo de la suma de los UTXO que posee la cuenta -o mejor dicho, la clave privada asociada a dicha cuenta- en un momento determinado.
+
+Por otro lado, Ethereum almacena el valor del balance de cada cuenta y otros valores importantes para la cadena en una base de datos que es compartida y replicada en cada nodo. Existen dos tipos de datos que se pueden representar en Ethereum y son los datos permanentes y los datos efímeros. Ejemplos de datos permanentes son las transacciones: una vez que son guardadas en los bloques y son confirmadas, estas transacciones no se pueden borrar ni modificar. Un ejemplo de dato efímero es el balance de las cuentas, ya que este valor se modifica cada vez que se produce una transacción sobre dicha cuenta. Por lo tanto, tiene sentido separar los datos permanentes de los efímeros. Ethereum utiliza, como se mencionó anteriormente, diferentes Trie -arboles Merkle Patrcia Trie- para almacenar dichos datos. A partir de este momento se utilizará el nombre Trie para mencionar estos tipos de árboles de almacenamiento.
+
+Los arboles Trie son comúnmente utilizados para almacenar secuencias de caracteres o palabras, y los árboles Patricia Trie utilizan el mismo concepto pero de una forma más compacta que reduce la cantidad de nodos internos del árbol, y por lo tanto, reduce el espacio. Ethereum utiliza este último con algunas modificaciones que mejoran aún más el rendimiento de búsqueda, y eso se debe a la combinación de la codificación de datos a través de prefijos de longitud recursiva RPL (Recursive-Length Prefix en inglés).
+
+En Ethereum existen tres árboles Trie para almacenar distintos tipos de datos, y de cada uno de estos árboles se guarda el \textit{hash} del árbol entero dentro de los datos de cabecera de cada nuevo bloque creado. Ya que toda la información que se encuentra en un bloque confirmado es inmutable, estos \textit{hashes} son utilizados para comprobar la integridad de los datos que residen internamente dentro de los árboles y se almacenan en las siguientes variables dentro de un bloque:
+
+\begin{enumerate}
+  \item stateRoot (Trie de estado)
+  \item transactionsRoot (Trie de transacciones)
+  \item receiptsRoot (Trie de recipientes)
+\end{enumerate}
+
+En el siguiente gráfico se puede apreciar cómo es incluida esta información en la cabecera del bloque.
+
+\begin{figure}[H]
+  \includegraphics[height=10cm, width=14cm]{merkle_ptricia_trie.png}
+  \centering
+  \caption{Almacenamiento de Tries en los bloques}
+  \label{fig:merkle-ptricia-trie}
+\end{figure}
+
+\paragraph{Trie de estados}
+
+Existe un solo Trie de estado global en Ethereum y es constantemente actualizado. Este Trie posee un par de clave-valor para cada cuenta existente en Ethereum. La clave es un hash de 160 bits que identifica a la dirección pública de cada cuenta y el valor está dado por la codificación utilizando RPL de los valores de detalle de las cuentas que están conformados por los siguientes campos:
+
+\begin{itemize}
+  \item nonce: si la cuenta es de propiedad externa, este número representa la cantidad de transacciones enviadas desde la dirección de la cuenta. Si la cuenta es de contrato, el \textit{nonce} es el número de contratos creados por la cuenta (no es el mismo \textit{nonce} que se utiliza en el protocolo de consenso).
+  \item balance: el balance en \textit{ether} que posee la cuenta.
+  \item storageRoot: Es el \textit{hash} del Trie completo donde se guarda toda la información de los contratos; en caso de ser una cuenta común este dato es nulo.
+  \item codeHash: Para las cuentas de contratos, es donde reside el \textit{bytecode} del mismo.
+\end{itemize}
+
+Como se puede observar existe un cuarto Trie, el Trie de almacenamiento, donde se guardan todas las variable e información relevante al contrato.  Este Trie se considera un sub-Trie del Trie de estado y la variable \textit{storageRoot} aloca el \textit{hash} del Trie de almacenamiento para esa determinada cuenta en un momento dado en el tiempo.
+
+De estas cuatro variables que componen el estado de una cuenta, la única que no se modifica a lo largo del tiempo es la de \textit{codeHash}, que almacena el código fuente del contrato. Por lo tanto una vez que un contrato es guardado en la blockchain nunca más se podrá borrar o modificar.
+
+Cabe destacar que las cuentas dentro del Trie de estado sólo son agregadas si son destinatario de al menos una transacción: no tendría sentido incluir cuentas sin balance o código interno para el caso de los contratos.
+
+\paragraph{Trie de almacenamiento}
+\label{bc_ethereum_storage_trie}
+
+El Trie de almacenamiento, como se mencionó anteriormente, es donde residen los datos del contrato. Cada cuenta de Ethereum tiene su propio Trie de almacenamiento. Entonces en la variable \textit{storageRoot} de la cuenta dentro del Trie de estados se guarda el \textit{hash} del Trie de almacenamiento de la cuenta.
+
+\paragraph{Trie de transacciones}
+
+Cada bloque tiene una lista con todas las transacciones que posee. El orden de las transacciones es determinado por el nodo minero o validador, y una vez que se introduce el bloque dentro de la blockchain y es confirmado, esta lista de transacciones y sus posiciones nunca se podrá modificar. Por lo tanto, los pasos para buscar una transacción dentro del Trie de transacciones siempre van a ser los mismos y depende de la codificación e indexación RPL que se realiza al momento de la inclusión de las mismas.
+
+\paragraph{Trie de recipientes}
+
+Este Trie almacena datos de salida de las transacciones como el estado pos-transacción, el total de gas utilizado, el conjunto de \textit{logs} de transacciones (puede incluir eventos de contrato en caso de que existan) y el filtro de los \textit{logs}. Estos datos, al igual que las transacciones, no se modifican.
+
+\paragraph{Transacciones}
+\label{bc_ethereum_tx}
+
+Las transacciones son la única componente que puede producir un cambio en el estado de la blockchain, ya sea mediante el envío de balance de una cuenta externa a otra, o la ejecución de un procedimiento dentro de un contrato. Las transacciones no son más que una cierta cantidad de parámetros específicos, empaquetados y firmados, y contienen los siguientes campos:
+
+\begin{itemize}
+  \item nonce: número de secuencia proveniente de la cuenta externa. Sólo tiene significado en el contexto de la dirección de envío. Es utilizado para evitar ataques de repetición.
+  \item Precio del gas: el precio del gas que el originador está dispuesto a pagar.
+  \item Límite de gas: la cantidad de unidades de gas que el originador está dispuesto a pagar.
+  \item Recipiente: el destinatario de la transacción.
+  \item Valor: la cantidad de \textit{ether} que se desea enviar al recipiente.
+  \item Datos: datos binarios de longitud variable.
+\end{itemize}
+
+En un sentido estricto, el \textit{nonce} es un atributo de la dirección de origen; es decir, sólo tiene significado en el contexto de la dirección de envío. Sin embargo, el \textit{nonce} no se almacena explícitamente como parte del estado de una cuenta en la cadena de bloques. En su lugar, se calcula dinámicamente, contando el número de transacciones confirmadas que se han originado desde una dirección.
+
+Antes de enviarla a la red se construye el paquete de datos que contiene los campos de la transacción y se serializa utilizando el esquema de codificación del Prefijo de Longitud Recursiva (RLP), que como se explicó anteriormente, Ethereum utiliza para codificar toda la información que reside dentro de la blockchain de una manera efectiva. Como resultado se obtiene un \textit{hash} que luego es firmado con la clave privada de la cuenta externa que origina la transacción.
+
+\begin{figure}[H]
+  \includegraphics[height=10cm, width=14cm]{ethereum_transaction_signature.png}
+  \centering
+  \caption{Firma de una transacción en Ethereum}
+  \label{fig:merkle-ptricia-trie}
+\end{figure}
+
+Una vez más se serializan todos los campos de la transacción más la firma digital para obtener el ID de la transacción. Este ID es un \textit{hash} de 256 bits y se utiliza para rastrear el estado o para consultar su estructura, ya sea mediante un explorador de bloques como lo es Etherscan\cite{Etherscan2018} o alguna herramienta que permita leer información de la blockchain.
+
+\begin{figure}[H]
+  \includegraphics[height=10cm, width=14cm]{ethereum_transaction_txid.png}
+  \centering
+  \caption{Identificador de una transacción en Ethereum}
+  \label{fig:merkle-ptricia-trie}
+\end{figure}
+
+Como se puede observar en el listado de campos de la transacción no se encuentra la dirección de la cuenta que origina la misma. Esto es debido a que dicha dirección se puede obtener a partir de la firma digital. También cabe destacar que dentro del cuerpo del mensaje sólo se envían los valores codificados sin los nombres de referencia. En general RLP no contiene ningún delimitador de campo o etiquetas, sino que se utiliza un prefijo que sirve para identificar la longitud de cada campo, con lo cual, cualquier dato más allá de la longitud definida pertenece al siguiente campo en la estructura.
+
+Una vez empaquetada y firmada la transacción ya está lista para ser enviada a la red para que los mineros la validen y la agreguen a un nuevo bloque. El minero debe realizar las verificaciones pertinentes y, en particular, verificar si la cuenta que envió la transacción posee suficientes fondos para pagar la comisión que implica el envío de balance a otra cuenta o la ejecución de código dentro de un contrato. Y en estos cálculos, entra el concepto de gas.
+
+\paragraph{Gas}
+\label{bc_ethereum_gas}
+
+El gas es el combustible de Ethereum. Es un concepto que va más allá del \textit{ether} pero a su vez están estrictamente ligados: no es una criptomoneda y tampoco se puede tener gas en una cuenta. El gas es una unidad de medida la cual determina la cantidad de cómputo que puede realizar una transacción dentro de la red, y así evitar ataques de denegación de servicios o bien bucles infinitos. Como se observa en el listado de parámetros de las transacciones existe: el límite de gas (gasLimit), que indica el máximo de unidades de gas que la transacción puede gastar, y a su vez, la cantidad de cómputo límite que la transacción podrá realizar. La cantidad de unidades de gas que requiere la ejecución de una instrucción de máquina dentro de la EVM está predeterminada en el ensayo amarillo de Ethereum (Yellow paper)\cite{wood2014ethereum} (por ejemplo, la cantidad de gas que consume la instrucción ADD es de 3 unidades).
+
+Ahora bien, el uso del gas es para determinar una forma de pago al cómputo consumido por una transacción, por lo que lleva un valor asociado: el precio del gas (gasPrice), el cual, se paga en \textit{ether} y este precio responde a la volatilidad de la propia moneda y a la cantidad de tráfico que exista en la red; por lo general, el precio del gas se mantiene estable pero fluctúa levemente. Como se mencionó anteriormente, el precio del gas es establecido por la cuenta que envía la transacción y tiene ciertos márgenes de tolerancia: si el precio es relativamente más elevado que el precio real, la transacción se podría confirmar más rápido que si el valor es el mismo que el precio real y si está por debajo podría tardar más o nunca ser ejecutada.
+
+El cómputo que se paga con el gas es realizado por los nodos mineros: estos ejecutan un programa cliente que es una máquina virtual con un cierto repertorio de instrucciones de máquinas Turing completa y son llamadas EVM (Ethereum Virtual Machine).
+
+\paragraph{Máquina de estados (EVM)}
+\label{bc_ethereum_evm}
+
+La EVM es una de las piezas más importantes de Ethereum y es un motor de cómputo que provee una capa de abstracción para el procesamiento de operaciones y almacenamiento de datos, similar a lo que es la máquina virtual. Por lo tanto, la EVM es la encargada de almacenar y ejecutar el código de los contratos inteligentes. Los contratos son escritos en un lenguaje de alto nivel, como Solidity o Vyper y luego son compilados a un conjunto de instrucciones de \textit{bytecode} para ser ejecutados por la EVM. Las instrucciones de máquina que posee la EVM son denominados \textit{opcodes} y estos permite realizar operaciones como:
+
+\begin{itemize}
+  \item Aritméticas y lógicas bit a bit.
+  \item Consultas de contexto de ejecución.
+  \item Acceso a la pila, memoria y almacenamiento.
+  \item De control de flujo.
+  \item Registro, llamadas y otros operadores.
+\end{itemize}
+
+A continuación se detallarán algunos de los \textit{opcodes} para la ejecución de cálculos aritméticos:
+
+\begin{minipage}{\linewidth}
+  \begin{lstlisting}[frame=single, language=javascript, captionpos=b, caption=Ejemplo de optcodes, belowskip=1em, aboveskip=2em, label={lst:post_archivo}]
+    ADD  //Suma los dos primero elementos de la pila
+    MUL  //Multiplica los dos primero elementos de la pila
+    SUB  //Resta los dos primero elementos de la pila
+    DIV  //Division de enteros
+    EXP  //Calculo exponencial
+    SHA3 //Calcular el hash SHA256 de un bloque en memoria
+  \end{lstlisting}
+\end{minipage}
+
+La EVM está compuesta por una memoria ROM y un estado de máquina (memoria volátil). La ROM es un código de programa inmutable que se carga junto al \textit{bytecode} del contrato inteligente y es necesario para la ejecución de los mismos, mietras que la memoria volátil está compuesta por las siguientes componentes:
+
+\begin{itemize}
+  \item \textbf{Pila:} La EVM es una máquina de pila, lo que significa que no realiza cálculos utilizando registros sino que usa una pila virtual. La pila tiene un tamaño máximo de 1024 y los elementos tienen un tamaño de 256 bits. La EVM es una máquina de palabras de tamaño de 256 bits debido a que esto facilita el esquema \textit{hash} SHA256 y los cálculos de curvas elípticas por los cuales se rige Ethereum.
+  \item \textbf{Memoria:} La memoria es un espacio volátil que se puede direccionar por bytes de lectura y escritura virtual. Se utiliza para almacenar datos que serán utilizados durante la ejecución, como por ejemplo, para almacenar datos que van a ser utilizados como argumentos de una funcione interna. Dado que es un área de intercambio y en constante uso, cada ejecución de programa comienza con una memoria vacía: esto quiere decir que todas las ubicaciones de memoria se inicializan con valor cero.
+  \item \textbf{Contador de programa:} Al igual que cualquier máquina que procesa operaciones, posee un contador de programa.
+  \item \textbf{Gas disponible:} El conteo de unidades de gas disponibles para la ejecución de la operación.
+  \item \textbf{Almacenamiento de cuenta:} Como se mencionó en \ref{bc_ethereum_storage_trie} los contratos almacenan toda su información en el Trie de almacenamiento. Es un espacio que se puede direccionar de palabras de lectura y escritura. A diferencia de la memoria, el almacenamiento es un área persistente. Es un mapeo clave-valor de $2^{256}$ espacios de 32 bytes cada una. Cabe aclarar que un contrato no puede leer ni escribir en ningún almacenamiento que no sea el suyo. Todas las ubicaciones se inicializan con valor cero. La cantidad de gas requerida para guardar los datos en el almacenamiento es una de las más altas entre las operaciones del EVM.
+
+\begin{figure}[H]
+  \includegraphics[height=10cm, width=14cm]{ethereum_evm_architecture.png}
+  \centering
+  \caption{Componentes de la EVM}
+  \label{fig:merkle-ptricia-trie}
+\end{figure}
+
+A demás de las operaciones de máquina que puede realizar, la EVM también posee acceso al estado global de Ethereum, por lo que tiene al alcance información de lectura y escritura referida a las cuentas, transacciones y bloques. Todos los llamados a los contratos que requieran un cambio en el estado global de Ethereum son procesados por la EVM. Estos cambios tiene un costo asociado en base a la cantidad de operaciones máquina que son requeridos para realizar dicho cambio. Si el gas aportado por la transacción que pretende generar dicho cambio no es suficiente, la operación se revierte, aportando así una propiedad importante que concede la capacidad de finalizar procesamiento y poder evitar, por ejemplo, los ciclos infinitos. A su vez la EVM no posee acceso a los mecanismos de organización, manejo de proceso, interfaces de red o sistemas de archivos que están dentro del sistema operativo de la máquina anfitrión, puesto que la EVM fue pensada para ejecutar contratos inteligentes dentro de un entorno totalmente aislado, para evitar la manipulación y/o apoderamiento de los recursos de hardware.
+\end{itemize}
+
+\subsubsection{Algoritmos de Consenso}
+\label{bc_ethereum_consensus}
+
+En esta subsección se describirán las características de los algoritmos de consenso vinculados a la blockchain de Ethereum. En primer lugar se explicarán los algoritmos actualmente en uso y luego se mencionarán alternativas en desarrollo y para otro tipo de problemas.
+
+Actualmente, el algoritmo de consenso usado en Ethereum se conoce como \textit{Ethash}, el cual es primordialmente un algoritmo de tipo \textit{Proof-of-Work}, muy similar a como se ha definido en su desarrollo teórico (\ref{bc_origins_hashcash}) y, en particular, en Bitcoin (\ref{bc_bitcoin_pow}); de hecho, el funcionamiento es prácticamente el mismo que este último: los nodos acumulan transacciones y validan los bloques, incrementando secuencialmente un valor \textit{nonce} hasta que el valor \textit{hash} final respecto al \textit{nonce} y al resto de los datos de la cabecera del bloque sea menor a un umbral (\textit{target}) -determinado por una dificultad autoajustada- para que la prueba de trabajo sea considerada válida.
+
+ En Bitcoin, el consenso basado en \textit{PoW} requiere únicamente un trabajo de fuerza bruta a nivel de CPU. Aprovechando esto, y en plena efervescencia del Bitcoin, diversos fabricantes han diseñado y construido circuitos ASIC\footnote{Circuito Integrado para Aplicaciones Específicas} con el objetivo de optimizar y aumentar el \textit{hashrate} (tasa de \textit{hashes} probados por unidad de tiempo) requerido para la validación de bloques. Esto ha contribuido a desviar el poder de minado a un número reducido de nodos con el capital suficiente para invertir en este tipo de dispositivos y, en consecuencia, le ha restado cierta descentralización a la red.
+
+ En busca de mitigar el problema enunciado, el algoritmo \textit{Ethash} presenta una implementación distinta, la cual, es deliberadamente mucho más demandante en términos de memoria y de entrada/salida. Es, en realidad, una versión mixta y mejorada de los algoritmos \textit{Dagger}\cite{buterin2013dagger} y \textit{Hashimoto}\cite{dryja2014hashimoto}. Básicamente lo que agrega es una estructura conocida como DAG, la cual es un grafo acíclico dirigido, y a partir de ella, se calcula el valor \textit{hash} final accediendo a una porción de esta estructura. La idea de que el validador constantemente tenga que acceder a una parte distinta e impredecible de dicho grafo hasta obtener el resultado final con el propósito de consumir exhaustivamente el ancho de banda de memoria, es la clave para combatir la proliferación de unidades ASIC y que una computadora normal pueda ser un justo competidor, para que de esta forma, pueda mantenerse mejor la propiedad de descentralización uniforme de la red.
+
+ Más allá de las modificaciones y mejoras que se aplican constantemente sobre \textit{Ethash}, desde hace un tiempo -y no únicamente en \textit{Ethereum}- se ha estado analizando las problemáticas de los algoritmos \textit{PoW}, en particular, el desperdicio de energía en la búsqueda del \textit{hash} objetivo, con vistas de encontrar una alternativa. Una de las más sólidas es la de \textit{Proof-of-Stake} o Prueba-de-Participación: en lugar de invertir potencia de cómputo para validar bloques, lo que se hace es enviar una transacción especial a la red con una determinada cantidad de monedas, y en función de dicha cantidad, se obtienen mayores probabilidades de disponer del derecho de validar un bloque. La confianza de este método se sustenta en el hecho de que los participantes que más capital tienen, más interés tendrán en garantizar el correcto funcionamiento de la red. Y la principal ventaja que acarrea consigo es que ya no hará falta grandes caudales de procesamiento, ni por ende, desperdicio de energía, siendo un método mucho más rentable y eficiente. Dentro del marco de \textit{Ethereum} se ha estado desarrollando desde hace años un algoritmo de consenso \textit{PoS} (\textit{Proof-of-Stake}) bajo el nombre en clave \textit{Casper}\cite{zamfir2017casper}, el cual eventualmente reemplazará al actual algoritmo \textit{PoW} \textit{Ethash}. Cabe destacar que esta promesa es también una de las razones por las cuales los dispositivos ASIC no se han popularizado en esta red, dado que el paso hacia un consenso de tipo Prueba-de-Participación dejaría a los mismos inutilizables.
+
+ Por último, para cerrar esta parte, se hará mención a un tipo de algoritmo de consenso bastante utilizado en blockchains privadas y de prueba, conocido como Prueba-de-Autoridad (o \textit{PoA}). En redes con este tipo de consenso se cuenta con un grupo reducido de nodos validadores que son los encargados de aprobar la integridad y la correctitud de los bloques. Además, estos nodos cuentan con una identidad pública, de forma tal que si se comportan maliciosamente, estos pueden ser expulsados de la red. La ventaja de este tipo de consenso es que las validaciones son sumamente veloces dado que no hay trabajo para invertir como en los métodos \textit{PoW} y el costo de malversar las transacciones es mucho mayor que en \textit{PoS} dado que la contraprestación es la identidad del nodo, algo que puede ser más fuerte y valioso que una determinada cantidad de monedas anónimas. Sin embargo, la mayor desventaja es precisamente la difusión de la identidad y ser parte de un grupo pequeño de validadores, que va en contra de la filosofía del anonimato y la descentralización, respectivamente, que son características inherentes a las blockchains, tal como fueron definidas originalmente. Por estas razones, los dominios en donde se emplea este tipo de consenso suelen ser redes pequeñas y acotadas, tales como las privadas -con cierto control jerarquizado- y las \textit{testnet} -las redes de tests para pruebas tempranas y rápidas de determinadas funcionalidades-. Un ejemplo muy concreto de \textit{testnet} con consenso \textit{PoA} es Kovan\cite{Kovan2019}, una red de prueba de \textit{Ethereum}.
+
+\subsubsection{Contratos inteligentes}
+\label{bc_ethereum_smart_contracts}
+
+Para concluir con el marco teórico se describirá la noción de ``Contrato inteligente'', pieza clave en la implementación de la solución del problema enunciado en esta tesina.
+
+El término ``Contrato inteligente'' fue acuñado por Nick Szabo (también creador de \textit{Bit Gold} , mencionado en \ref{bc_origins_bmbg}) en \textit{Formalizing and securing relationships on public networks}\cite{Szabo1997} donde, además, desarrolla de manera teórica y filosófica las razones por las cuales estos contratos inteligentes debieran ser la opción de facto para establecer relaciones seguras en la era digital, por medio de criptografía y protocolos de mensajes escritos en un lenguaje formal\footnote{Existe un primer borrador de lenguaje de definición de contratos inteligentes en \cite{Szabo2002}.}. En dicho artículo, se pone foco también en cuestiones como el anonimato y la descentralización -de hecho, hace mención de las \textit{Mix Networks} estudiadas en \ref{historia_descentralizacion} como mecanismo para lograr esto- para finalmente concluir que no es necesario una tercera parte activa que actúe como supervisor del cumplimiento del contrato.
+
+Con la llegada de las blockchains -a partir de Bitcoin en 2009-, planteadas como plataformas seguras y descentralizadas para realizar operaciones, la idea de los contratos inteligentes volvió a cobrar interés. Más aún, se podría llegar a pensar que Bitcoin en realidad implementa un contrato universal para intercambiar monedas, y precisamente la idea que dio lugar al surgimiento de Ethereum fue el poder desacoplar de alguna forma la lógica de una operación determinada -por ejemplo, un intercambio de monedas- del contexto de ejecución inmutable y replicado en todos los nodos de la red.
+
+En definitiva, si un contrato inteligente empaqueta la lógica de una operación de una manera rigurosa y consistente, entonces se podría definir un contrato como un programa cuyos efectos deben ser bien determinados y globalmente visibles y resguardados por toda la red. Para cumplir con estas condiciones, un contrato inteligente necesariamente debe ser inmutable -el código que implementa la lógica no puede cambiar- y determinístico -dada una transacción y un estado particular de la red, los efectos de la ejecución deben ser los mismos independientemente del contexto espacial o temporal de la misma-
+
+En Ethereum, existen diversos lenguajes para definir contratos inteligentes. Pero lo más importante es que independientemente del lenguaje utilizado el código del contrato pueda compilarse al \textit{bytecode}\footnote{Conjunto de instrucciones primitivas.} de la EVM, desarrollada en \ref{bc_ethereum_evm}. En definitiva, la red Ethereum lo único que puede ejecutar es ese \textit{bytecode}.
+
+Los contratos en Ethereum se crean por medio de una transacción especial encargada de desplegarlos. Como resultado, si el proceso es exitoso, se recibe la dirección pública del contrato para interactuar con él. Estas interacciones se realizan por medio del protocolo JSON-RPC\footnote{\url{https://github.com/ethereum/wiki/wiki/JSON-RPC}}, esto es, mediante mensajes en formato JSON\footnote{JavaScript Object Notation} se pueden hacer llamados remotos a procedimientos definidos dentro del contrato (RCP\footnote{Remote Procedure Call}). Tal como se mencionó en la subsección \ref{bc_ethereum_tx}, si una operación de un contrato va modificar el estado de la blockchain, dicha mutación necesariamente será reflejada por medio de una transacción, indicando el procedimiento y los parámetros del llamado. Dado que las transacciones son, por definición, atómicas, sólo se almacenan en la blockchain si la ejecución completa del procedimiento del contrato terminó exitosamente, de lo contrario, no se registra como tal (aunque sí se registra el intento fallido).
+
+En cuanto al costo operativo de llamar a un procedimiento de un contrato, se consideran varias variables: en primer lugar, si dicha llamada crea una transacción se debe sumar el costo de comisión clásico. En este caso, asimismo, se tiene que adicionar el costo del gas insumido en la ejecución. Y, opcionalmente, podría haber un diferencial asociado a dicha función en particular, en cuyo caso, también se sumariza al costo total. Por otro lado, y en general, cualquier operación que realice simplemente una lectura de la blockchain sin alterarla, no tiene ningún costo, ni transaccional -ya que sin cambios en la blockchain, no hay transacciones-, ni de uso de gas -no se cobra en operaciones de lectura pura-, ni ningún otro extra.
+
+Es importante destacar que dado que los contratos inteligentes no se pueden modificar una vez desplegados, su diseño tiene que ser cuanto menos excelente y muy bien testeado -por esta razón existen las \textit{testnets}-; de lo contrario, se tendrá en la blockchain un contrato deficiente que puede fallar, e incluso, ser atacado y provocar daños mayores.
+
+Retomando la parte de lenguajes, si bien se ha expresado que existen varios, el más empleado hoy por hoy es \textit{Solidity}, probablemente por el simple hecho de ser el que presenta mayores similitudes con los lenguajes populares actuales, como Java y JavaScript. Por dicha razón, es el lenguaje que se usará para implementar el contrato inteligente que será parte de la solución del problema especificado en esta tesina.
+
+\subsubsection{Recapitulación}
+
+Se han mostrado los principales componentes de interés que constituyen a la blockchain de Ethereum, haciendo foco en sus particularidades necesarias para disponer de un modelo de cómputo general y distribuido, mucho más flexible y complejo que aquel mostrado en Bitcoin. A partir de estos cimientos, luego se ha explicado la idea de contrato inteligente como elemento e interfaz tanto para codificar como para ejecutar lógica y reglas de negocios personalizada.
+
+Y con esto concluye el marco teórico. En base a todo lo expuesto, se verá en el siguiente capítulo -de implementación de la solución- cómo aplicar los fundamentos estudiados para diseñar y construir una alternativa descentralizada que posea, de forma inherente, mejores propiedades en cuanto a seguridad y disponibilidad.
+

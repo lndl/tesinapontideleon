@@ -1,0 +1,27 @@
+{
+  "name": "contratos",
+  "version": "1.0.0",
+  "description": "",
+  "main": "truffle.js",
+  "scripts": {
+    "test": "scripts/test.sh",
+    "coverage": "scripts/coverage.sh",
+    "compile": "node_modules/.bin/truffle  compile",
+    "lint": "node_modules/.bin/solhint \"contracts/**/*.sol\""
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "solc": "^0.4.25",
+    "truffle": "^4.1.15",
+    "web3": "^1.0.0-beta.52"
+  },
+  "devDependencies": {
+    "chai": "^4.1.2",
+    "chai-as-promised": "^7.1.1",
+    "chai-bignumber": "^2.0.2",
+    "ganache-cli": "^6.1.8",
+    "solhint": "^2.0.0",
+    "solidity-coverage": "^0.5.11"
+  }
+}

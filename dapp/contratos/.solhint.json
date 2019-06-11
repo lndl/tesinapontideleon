@@ -1,0 +1,12 @@
+{
+  "extends": "solhint:default",
+  "rules": {
+    "indent": [
+      "error",
+      4
+    ],
+    "bracket-align": false,
+    "compiler-fixed": false,
+    "no-simple-event-func-name": false
+  }
+}

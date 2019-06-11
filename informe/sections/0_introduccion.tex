@@ -1,0 +1,24 @@
+\section{Introducción}
+
+En la actualidad, los métodos para garantizar la integridad de archivos -ya sea para corroborar la ausencia de problemas en la red o de seguridad- tienen como problemática que el respaldo de dicha característica se apoya en un servidor central, con lo cual, es relativamente simple que alguien sin autorización o con malas intenciones pueda realizar alteraciones de estos datos, sin dejar ninguna traza pública de estas acciones.
+En el año 2008, se publicó un paper titulado ``Bitcoin: Un Sistema de Efectivo Electrónico Usuario-a-Usuario''\cite{Nakamoto2008b} el cual explica el funcionamiento de un sistema monetario electrónico totalmente descentralizado peer-to-peer, es decir, sin intervención de una entidad tercera que autorice y dé fe acerca de la autenticidad de la transacción. El principio básico de este sistema es justamente distribuir la información entre todos los nodos usuarios/participantes dentro de la red de forma tal que cada uno de ellos mantenga en todo momento la misma historia de todas las transacciones realizadas y donde dicha fuente de información sea completamente inmutable, a fin de mantener la buscada integridad de estos datos, y por transitividad, su confiabilidad. Estas ideas, tiempo después, definirían de forma más general el concepto de blockchain.
+
+\subsection{Objetivo}
+
+El objetivo de esta tesina es brindar una nueva alternativa de solución al problema de la integridad de archivos basada en los fundamentos conceptuales sobre los cuales se apoya la tecnología blockchain.
+Asimismo se resolverá un caso específico y concreto utilizando la plataforma Ethereum \cite{Buterin2014}, la cual es una implementación de una blockchain que permite realizar cómputo distribuido y seguro sobre ella por medio de contratos inteligentes \cite{Szabo1997}. Estos contratos son piezas de código que codifican determinada lógica y registran transacciones en base al estado de la red, sin intervención de terceros.
+La idea es que en lugar de confiar en una arquitectura centralizada para cerciorar la correcta integridad de un archivo, ahora esa confianza se delegue a una arquitectura distribuida en pos de minimizar al máximo los posibles fraudes.
+
+\subsection{Estructura de la tesina}
+
+En la Sección \ref{desc_problem} se hará una descripción detallada acerca del problema de la integridad de archivos, los mecanismos actuales para constatar que un archivo no fue modificado en el tiempo o en el espacio y las principales deficiencias de estos enfoques, tanto desde la perspectiva algorítmica como desde la infraestructura.
+\\
+
+En la Sección \ref{mt_blockchain} se brindará el sustento acerca de la tecnología blockchain, desde su historia hasta los fundamentos técnicos y matemáticos que le dan forma, así como también, las distintas implementaciones con sus ventajas y desventajas. En particular, se verá un tipo de blockchain con contratos inteligentes que son piezas lógicas ejecutables capaces de establecer una restricción sobre un evento o proceso de forma totalmente descentralizada.
+\\
+
+En la Sección \ref{imp_solucion} se detallará la solución técnica propuesta para el problema de la integridad de archivos usando blockchain y contratos inteligentes.
+\\
+
+En la Sección \ref{conclusion} se expondrán la conclusiones y lo que dejó el desarrolló del presente trabajo.
+

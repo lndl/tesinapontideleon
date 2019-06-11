@@ -1,0 +1,60 @@
+\documentclass[a4paper,12pt,titlepage,hidelinks,final]{article}
+
+% --- INCLUSION DE COSAS ---
+\input{inc/packages}
+\input{inc/languages}
+\input{inc/commands}
+
+% --- ARRANCA LA TESINA ---
+\begin{document}
+
+% Carátula
+\pagenumbering{gobble} % Oculta numeración de las páginas
+\caratula
+
+% Página en blanco
+\clearpage\mbox{}\clearpage
+
+% Meta previa al contenido principal
+\setcounter{secnumdepth}{0}
+\setcounter{tocdepth}{4}
+\setcounter{page}{1}
+\pagenumbering{Roman}
+
+% Tabla de contenidos
+\tableofcontents
+\newpage
+
+% Tabla de figuras
+\listoffigures
+\newpage
+
+% Tabla de listings (extractos de código fuente)
+\lstlistoflistings
+\newpage
+
+% --- ARRANCA EL CONTENIDO REAL ---
+
+\pagenumbering{arabic}
+\input{sections/0_introduccion.tex}
+\newpage
+\setcounter{secnumdepth}{4}
+\newpage
+\input{sections/1_desc_problema.tex}
+\newpage
+\input{sections/2_marco_teorico.tex}
+\newpage
+\input{sections/3_impl_solucion.tex}
+\newpage
+\input{sections/4_conclusion.tex}
+\newpage
+\input{sections/5_trabajos_futuros.tex}
+
+% --- BIBLIOGRAFIA ---
+
+\newpage
+\addcontentsline{toc}{section}{Referencias}
+\bibliographystyle{unsrtnat}
+\bibliography{tesina}
+
+\end{document}
