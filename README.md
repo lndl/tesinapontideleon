@@ -2,6 +2,10 @@
 
 Este proyecto contiene una copia de la tesina titulada "Integridad de archivos y su distribución en la blockchain", junto a las fuentes (en LaTEX) y el prototipo implementado como parte del desarrollo de la misma.
 
+## Informe / tesina
+
+Se puede descargar directamente desde este [link](https://github.com/lndl/tesinapontideleon/raw/master/informe/tesina.pdf).
+
 ## Licencia
 
 Esta tesina, incluyendo las fuentes y el prototipo, se encuentra licenciada bajo una [Licencia Creative Commons Atribución-CompartirIgual 4.0 Internacional](http://creativecommons.org/licenses/by-sa/4.0/).
