@@ -10,7 +10,7 @@
     "cors": "^2.8.4",
     "debug": "~2.6.9",
     "express": "~4.16.0",
-    "express-fileupload": "^0.4.0",
+    "express-fileupload": "^1.1.9",
     "http-errors": "~1.6.2",
     "js-sha256": "^0.9.0",
     "morgan": "~1.9.1"
